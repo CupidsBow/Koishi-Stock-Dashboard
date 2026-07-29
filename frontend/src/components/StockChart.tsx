@@ -59,25 +59,31 @@ class SignalLabelRenderer implements IPrimitivePaneRenderer {
       const arrow = this._isBuy ? "B" : "S";
       const fontSize = 11;
       const labelX = this._x;
-      const labelY = this._y;
+      const labelY = this._y;  // buy=below candle low+offset, sell=above candle high-offset
 
       ctx.font = `${fontSize}px sans-serif`;
       ctx.textAlign = "center";
 
-      // Text background
       const metrics = ctx.measureText(this._text);
       const tw = metrics.width;
       const th = fontSize + 4;
-      const bgY = labelY - fontSize - 2;
 
-      ctx.fillStyle = this._color + "50";
-      this._roundRect(ctx, labelX - tw / 2 - 4, bgY, tw + 8, th, 3);
-      ctx.fill();
-
-      // Arrow box
       const arrowBoxW = 18;
       const arrowBoxH = 16;
-      const arrowY = this._isBuy ? labelY + 2 : labelY - arrowBoxH - 4;
+      const gap = 3;
+
+      // Placement: B/S box goes between candle and text box
+      // buy (labelY is below candle): candle ... arrow(below) ... text(below arrow)
+      // sell (labelY is above candle): candle ... arrow(above) ... text(above arrow)
+      const arrowY = this._isBuy
+        ? labelY                         // arrow starts at labelY, extends downward
+        : labelY - arrowBoxH;            // arrow ends at labelY, extends upward
+
+      const bgY = this._isBuy
+        ? arrowY + arrowBoxH + gap       // text below arrow
+        : arrowY - gap - th;             // text above arrow
+
+      // Arrow box — closer to candle
       ctx.fillStyle = this._color + "80";
       this._roundRect(ctx, labelX - arrowBoxW / 2, arrowY, arrowBoxW, arrowBoxH, 3);
       ctx.fill();
@@ -87,10 +93,15 @@ class SignalLabelRenderer implements IPrimitivePaneRenderer {
       ctx.font = "bold 10px sans-serif";
       ctx.fillText(arrow, labelX, arrowY + 12);
 
+      // Text background — further from candle
+      ctx.fillStyle = this._color + "50";
+      this._roundRect(ctx, labelX - tw / 2 - 4, bgY, tw + 8, th, 3);
+      ctx.fill();
+
       // Label text
       ctx.fillStyle = "#ffffff";
       ctx.font = `${fontSize}px sans-serif`;
-      ctx.fillText(this._text, labelX, labelY);
+      ctx.fillText(this._text, labelX, bgY + fontSize + 1);
 
       ctx.restore();
     });
@@ -192,7 +203,7 @@ class BBSignalPrimitive implements ISeriesPrimitive<Time> {
       );
       if (priceY === null) continue;
 
-      const offsetY = s.kind === "Buy" ? 20 : -20;
+      const offsetY = s.kind === "Buy" ? 28 : -28;
       const color = s.kind === "Buy" ? "#dc2626" : "#16a34a";
 
       views.push(new SignalLabelPaneView(
