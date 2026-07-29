@@ -78,7 +78,26 @@
       "Bash(\"description\": \"Verify merge output contains 金叉/死叉\", \"command\": \"echo 'Test pattern matching: \\\\\"买@12.34\\(KDJ金叉+MACD确认\\) & @12.50\\(KDJ金叉+支撑位确认\\)→13.56\\(+9.9%\\)\\\\\" contains 金叉=' ; echo '买@12.34\\(KDJ金叉+MACD确认\\) & @12.50\\(KDJ金叉+支撑位确认\\)→13.56\\(+9.9%\\)' | grep -o '金叉\\\\\\\\|死叉' ; echo '---' ; echo 'Test sell: \\\\\"KDJ死叉+MACD确认+KDJ死叉+压力位确认\\(卖\\)\\\\\" contains 死叉=' ; echo 'KDJ死叉+MACD确认+KDJ死叉+压力位确认\\(卖\\)' | grep -o '金叉\\\\\\\\|死叉'\"})",
       "Bash(\"cd /home/swarm/rust_project/stock-dashboard/frontend && ./node_modules/.bin/tsc --noEmit 2>&1\", \"description\": \"TypeScript check\"})",
       "Bash(\"cd /home/swarm/rust_project/stock-dashboard/stock-backend && cargo build 2>&1 | tail -10\", \"description\": \"Build Rust backend after simplifying reasons\"})",
-      "Bash(\"\\\\\"./node_modules/.bin/tsc --noEmit 2>&1\\\\\", \\\\\"description\\\\\": \\\\\"TypeScript check\\\\\"\"})"
+      "Bash(\"\\\\\"./node_modules/.bin/tsc --noEmit 2>&1\\\\\", \\\\\"description\\\\\": \\\\\"TypeScript check\\\\\"\"})",
+      "Bash(curl -s --max-time 10 'http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000001&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=3')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s --max-time 10 'http://searchapi.eastmoney.com/bussiness/Web/GetCMSSearchResult?type=8192&pageindex=1&pagesize=5&keyword=平安银行&name=zq')",
+      "Bash(curl -s --max-time 10 'http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.000001&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=2')",
+      "Bash(curl -s --max-time 10 'https://searchapi.eastmoney.com/api/suggest/get?input=%E5%B9%B3%E5%AE%89%E9%93%B6%E8%A1%8C&type=14&token=D43BF722C8E33BDC906FB84D85E326E8&count=5')",
+      "Bash(curl -s --max-time 10 'http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.600000&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=2')",
+      "Bash(curl -s --max-time 10 'http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.002142&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=2')",
+      "Bash(\"curl -v --max-time 10 'http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.600000&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=2' 2>&1 | tail -30\", \"description\": \"Verbose test K-line API for 600000 to debug connectivity\"})",
+      "Bash(curl -s --max-time 10 \"http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.600000&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=2\")",
+      "Bash(curl -s --max-time 10 \"http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=0.002142&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=2\")",
+      "Bash(curl -s --max-time 10 \"http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.000001&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=2\")",
+      "Bash(curl -s --max-time 10 \"https://push2his.eastmoney.com/api/qt/stock/kline/get?secid=1.600000&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=2\")",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(curl -s --max-time 10 \"https://push2.eastmoney.com/api/qt/stock/kline/get?secid=1.600000&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=2\")",
+      "Bash(\"grep -rn \\\\\"a_share_candles\\\\\\\\|a_share_search\\\\\" /home/swarm/.cargo/registry/src/mirrors.ustc.edu.cn-38d0e5eb5da2abae/akshare-0.1.14/src/\", \"description\": \"Find files implementing a_share_candles and a_share_search\"})",
+      "Bash(\"find /home/swarm/.cargo/registry/src -path '*/akshare-0.1*' -name 'tencent.rs' 2>/dev/null; find /home/swarm/.cargo/registry/src -path '*/akshare-0.1*' -name 'candles.rs' 2>/dev/null\")",
+      "Bash(find /home/swarm/.cargo/registry/src -path '*/akshare-0.1*/src/provider/tencent.rs')",
+      "Read(//home/swarm/.cargo/registry/src/**)",
+      "Bash(find /home/swarm/.cargo/registry/src -path '*/akshare-0.1*/src/provider/market_client/a_share/candles.rs')"
     ],
     "additionalDirectories": [
       "/home/swarm/rust_project/stock-dashboard"
