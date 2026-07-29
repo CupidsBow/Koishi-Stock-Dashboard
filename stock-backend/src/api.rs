@@ -28,7 +28,9 @@ pub struct StockQuery {
   pub days: usize,
 }
 
-fn default_days() -> usize { 400 }
+fn default_days() -> usize {
+  400
+}
 
 #[derive(Debug, Deserialize)]
 pub struct SearchQuery {
@@ -42,7 +44,9 @@ pub struct MinuteQuery {
   pub period: String,
 }
 
-fn default_period() -> String { "5".into() }
+fn default_period() -> String {
+  "5".into()
+}
 
 #[derive(Debug, Serialize)]
 pub struct IndicatorsResponse {
@@ -51,6 +55,9 @@ pub struct IndicatorsResponse {
   pub keltner: Vec<Option<indicators::KeltnerPoint>>,
   pub macd: Vec<Option<indicators::MacdPoint>>,
   pub kdj: Vec<Option<indicators::KdjPoint>>,
+  pub adx: Vec<Option<indicators::AdxPoint>>,
+  pub rsi: Vec<Option<f64>>,
+  pub regime: String,
   pub signals: Vec<indicators::Signal>,
 }
 
@@ -65,7 +72,8 @@ pub async fn get_candles(Query(params): Query<StockQuery>) -> impl IntoResponse 
     Err(e) => (
       StatusCode::INTERNAL_SERVER_ERROR,
       Json(serde_json::json!({"error": format!("Failed: {}", e)})),
-    ).into_response(),
+    )
+      .into_response(),
   }
 }
 
@@ -75,24 +83,42 @@ pub async fn get_minutes(Query(params): Query<MinuteQuery>) -> impl IntoResponse
     Err(e) => (
       StatusCode::INTERNAL_SERVER_ERROR,
       Json(serde_json::json!({"error": format!("Failed: {}", e)})),
-    ).into_response(),
+    )
+      .into_response(),
   }
 }
 
 pub async fn get_indicators(Query(params): Query<StockQuery>) -> impl IntoResponse {
   let candles = match stock::fetch_stock_data(&params.symbol, params.days).await {
     Ok(c) => c,
-    Err(e) => return (
-      StatusCode::INTERNAL_SERVER_ERROR,
-      Json(serde_json::json!({"error": format!("Failed: {}", e)})),
-    ).into_response(),
+    Err(e) => {
+      return (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(serde_json::json!({"error": format!("Failed: {}", e)})),
+      )
+        .into_response();
+    }
   };
   let bb = indicators::bollinger_bands(&candles, 20);
   let kn = indicators::keltner_channels(&candles);
   let mc = indicators::macd(&candles);
   let kd = indicators::kdj(&candles, 9);
+  let ax = indicators::adx(&candles, 14);
+  let rs = indicators::rsi(&candles, 2);
+  let rg = indicators::market_regime(&ax, &bb, &candles);
   let sig = indicators::compute_signals(&candles, &bb, &kn, &mc, &kd);
-  Json(IndicatorsResponse { candles, bollinger: bb, keltner: kn, macd: mc, kdj: kd, signals: sig }).into_response()
+  Json(IndicatorsResponse {
+    candles,
+    bollinger: bb,
+    keltner: kn,
+    macd: mc,
+    kdj: kd,
+    adx: ax,
+    rsi: rs,
+    regime: rg,
+    signals: sig,
+  })
+  .into_response()
 }
 
 pub async fn search_stocks(Query(params): Query<SearchQuery>) -> impl IntoResponse {
@@ -101,6 +127,7 @@ pub async fn search_stocks(Query(params): Query<SearchQuery>) -> impl IntoRespon
     Err(e) => (
       StatusCode::INTERNAL_SERVER_ERROR,
       Json(serde_json::json!({"error": format!("Search failed: {}", e)})),
-    ).into_response(),
+    )
+      .into_response(),
   }
 }

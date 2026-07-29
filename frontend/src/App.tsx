@@ -63,6 +63,9 @@ function mergeIndicators(older: IndicatorsResponse, newer: IndicatorsResponse): 
     keltner:  pickOlder(older.keltner),
     macd:     pickOlder(older.macd),
     kdj:      pickOlder(older.kdj),
+    adx:      pickOlder(older.adx || []),
+    rsi:      pickOlder(older.rsi || []),
+    regime:   older.regime || newer.regime || "震荡市",
     signals,
   };
 }
@@ -169,7 +172,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <h1>
-          <span className="dot">●</span> Udongein Stock Dashboard
+          <span className="dot">●</span> Koishi Stock Dashboard
         </h1>
         <StockSearch onSelect={handleAddStock} />
       </header>
@@ -222,6 +225,7 @@ export default function App() {
               bollinger={indicators.bollinger}
               keltner={indicators.keltner}
               macd={indicators.macd}
+              regime={indicators.regime}
               kdj={indicators.kdj}
               signals={indicators.signals}
               label={activeStock.symbol}

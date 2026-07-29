@@ -67,7 +67,18 @@
       "Bash(\"setMarkers\")",
       "Bash(\"curl -s http://localhost:3000/api/indicators?symbol=000001&days=10 | head -200\")",
       "Bash(curl -s \"http://localhost:3000/api/indicators?symbol=000001&days=10\")",
-      "Bash(\"curl -s 'http://localhost:3000/api/indicators?symbol=000001&days=200' | python3 -c \\\\\"\\\\nimport json,sys\\\\nd=json.load\\(sys.stdin\\)\\\\nprint\\('fields:', list\\(d.keys\\(\\)\\)\\)\\\\nprint\\('candles:', len\\(d['candles']\\)\\)\\\\nprint\\('signals:', len\\(d['signals']\\)\\)\\\\nfor s in d['signals'][:5]:\\\\n    print\\(f\\\\\\\\\\\\\"  {s['kind']:4s} at {s['time']} \\({s['reason']}\\) price={s['price']}\\\\\\\\\\\\\"\\)\\\\\"\", \"description\": \"Test indicators API for signals field\"})"
+      "Bash(\"curl -s 'http://localhost:3000/api/indicators?symbol=000001&days=200' | python3 -c \\\\\"\\\\nimport json,sys\\\\nd=json.load\\(sys.stdin\\)\\\\nprint\\('fields:', list\\(d.keys\\(\\)\\)\\)\\\\nprint\\('candles:', len\\(d['candles']\\)\\)\\\\nprint\\('signals:', len\\(d['signals']\\)\\)\\\\nfor s in d['signals'][:5]:\\\\n    print\\(f\\\\\\\\\\\\\"  {s['kind']:4s} at {s['time']} \\({s['reason']}\\) price={s['price']}\\\\\\\\\\\\\"\\)\\\\\"\", \"description\": \"Test indicators API for signals field\"})",
+      "Bash(/bin/bash -c 'cd /home/swarm/rust_project/stock-dashboard/stock-backend && cargo build 2>&1')",
+      "Bash(\"sed -i 's/position: s.kind === \\\\\"Buy\\\\\" ? \\\\\"belowBar\\\\\" : \\\\\"aboveBar\\\\\"/position: \\\\\"inBar\\\\\"/g; s/shape: s.kind === \\\\\"Buy\\\\\" ? \\\\\"arrowUp\\\\\" : \\\\\"arrowDown\\\\\"/shape: \\\\\"circle\\\\\"/g; s/size: 2/size: 3/g' /home/swarm/rust_project/stock-dashboard/frontend/src/components/StockChart.tsx\")",
+      "Bash(\"\"sed -i'' -e 's/position: s.kind === .Buy. ? .belowBar. : .aboveBar./position: \"inBar\"/g' -e 's/shape: s.kind === .Buy. ? .arrowUp. : .arrowDown./shape: \"circle\"/g' -e 's/size: 2/size: 3/g' /home/swarm/rust_project/stock-dashboard/frontend/src/components/StockChart.tsx\"\", \"description\": \"Replace markers styling via sed\")",
+      "Bash(\"sed -n '4770,4780p' node_modules/lightweight-charts/dist/typings.d.ts\", \"description\": \"\"})",
+      "Bash(\"npx tsc *)",
+      "Bash(cargo check *)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(\"description\": \"Verify merge output contains 金叉/死叉\", \"command\": \"echo 'Test pattern matching: \\\\\"买@12.34\\(KDJ金叉+MACD确认\\) & @12.50\\(KDJ金叉+支撑位确认\\)→13.56\\(+9.9%\\)\\\\\" contains 金叉=' ; echo '买@12.34\\(KDJ金叉+MACD确认\\) & @12.50\\(KDJ金叉+支撑位确认\\)→13.56\\(+9.9%\\)' | grep -o '金叉\\\\\\\\|死叉' ; echo '---' ; echo 'Test sell: \\\\\"KDJ死叉+MACD确认+KDJ死叉+压力位确认\\(卖\\)\\\\\" contains 死叉=' ; echo 'KDJ死叉+MACD确认+KDJ死叉+压力位确认\\(卖\\)' | grep -o '金叉\\\\\\\\|死叉'\"})",
+      "Bash(\"cd /home/swarm/rust_project/stock-dashboard/frontend && ./node_modules/.bin/tsc --noEmit 2>&1\", \"description\": \"TypeScript check\"})",
+      "Bash(\"cd /home/swarm/rust_project/stock-dashboard/stock-backend && cargo build 2>&1 | tail -10\", \"description\": \"Build Rust backend after simplifying reasons\"})",
+      "Bash(\"\\\\\"./node_modules/.bin/tsc --noEmit 2>&1\\\\\", \\\\\"description\\\\\": \\\\\"TypeScript check\\\\\"\"})"
     ],
     "additionalDirectories": [
       "/home/swarm/rust_project/stock-dashboard"

@@ -45,6 +45,13 @@ export interface KdjPoint {
   j: number;
 }
 
+export interface AdxPoint {
+  time: number;
+  adx: number;
+  plus_di: number;
+  minus_di: number;
+}
+
 export interface Signal {
   time: number;
   kind: "Buy" | "Sell";
@@ -58,5 +65,8 @@ export interface IndicatorsResponse {
   keltner: (KeltnerPoint | null)[];
   macd: (MacdPoint | null)[];
   kdj: (KdjPoint | null)[];
+  adx: (AdxPoint | null)[];
+  rsi: (number | null)[];
+  regime: string;
   signals: Signal[];
 }
