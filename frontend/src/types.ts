@@ -57,6 +57,7 @@ export interface Signal {
   kind: "Buy" | "Sell";
   price: number;
   reason: string;
+  pnl_pct?: number | null;
 }
 
 export interface IndicatorsResponse {

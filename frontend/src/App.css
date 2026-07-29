@@ -270,6 +270,17 @@
   line-height: 1.6;
 }
 
+/* ── PnL Badge ─────────────────────────────────────────── */
+
+.pnl-badge {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
 /* ── Utils ───────────────────────────────────────────── */
 
 .btn-primary {

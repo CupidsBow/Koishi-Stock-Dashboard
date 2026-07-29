@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { fetchIndicators } from "./api";
 import type { Candle, StockItem, StockInfo, IndicatorsResponse } from "./types";
 import StockSearch from "./components/StockSearch";
@@ -168,6 +168,13 @@ export default function App() {
 
   const activeStock = stocks.find((s) => s.symbol === activeSymbol);
 
+  const totalClosedPnl = useMemo(() => {
+    if (!indicators) return null;
+    return indicators.signals
+      .filter((s) => s.kind === "Buy" && s.pnl_pct != null)
+      .reduce((sum, s) => sum + (s.pnl_pct as number), 0);
+  }, [indicators]);
+
   return (
     <div className="app">
       <header className="app-header">
@@ -196,6 +203,17 @@ export default function App() {
                   {activeStock.name} · {activeStock.market}
                 </span>
               </div>
+              {totalClosedPnl !== null && (
+                <div
+                  className="pnl-badge"
+                  style={{
+                    color: totalClosedPnl >= 0 ? "#ef4444" : "#22c55e",
+                  }}
+                >
+                  已平仓收益 {totalClosedPnl >= 0 ? "+" : ""}
+                  {totalClosedPnl.toFixed(2)}%
+                </div>
+              )}
               {loadingMore && (
                 <span style={{ fontSize: 12, color: "var(--text-muted)" }}>加载更多数据…</span>
               )}

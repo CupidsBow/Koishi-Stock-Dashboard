@@ -285,6 +285,9 @@ export default function StockChart({
         timeVisible: true,
         secondsVisible: false,
       },
+      localization: {
+        dateFormat: "yyyy-MM-dd",
+      },
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
     });

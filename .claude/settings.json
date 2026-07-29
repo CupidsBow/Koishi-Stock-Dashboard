@@ -97,7 +97,8 @@
       "Bash(\"find /home/swarm/.cargo/registry/src -path '*/akshare-0.1*' -name 'tencent.rs' 2>/dev/null; find /home/swarm/.cargo/registry/src -path '*/akshare-0.1*' -name 'candles.rs' 2>/dev/null\")",
       "Bash(find /home/swarm/.cargo/registry/src -path '*/akshare-0.1*/src/provider/tencent.rs')",
       "Read(//home/swarm/.cargo/registry/src/**)",
-      "Bash(find /home/swarm/.cargo/registry/src -path '*/akshare-0.1*/src/provider/market_client/a_share/candles.rs')"
+      "Bash(find /home/swarm/.cargo/registry/src -path '*/akshare-0.1*/src/provider/market_client/a_share/candles.rs')",
+      "Bash(\"cd /home/swarm/rust_project/stock-dashboard/frontend && npx tsc --noEmit 2>&1\", \"description\": \"Check frontend TypeScript compilation\", \"timeout\": 30000})"
     ],
     "additionalDirectories": [
       "/home/swarm/rust_project/stock-dashboard"

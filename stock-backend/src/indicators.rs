@@ -386,6 +386,9 @@ pub struct Signal {
   pub kind: SignalKind,
   pub price: f64,
   pub reason: String,
+  /// PnL percentage for closed buy signals (None for sells / unclosed /
+  /// J-line signals).
+  pub pnl_pct: Option<f64>,
 }
 
 const CONFIRM_WINDOW: usize = 3;
@@ -763,12 +766,13 @@ pub fn compute_signals(
         open.clear();
       } else {
         // Unpaired sell
-        let tags = dedup_tags(sell_reasons.iter().copied());
+        let tags = decompose_and_join(&sell_reasons.iter().copied().collect::<Vec<_>>());
         out.push(Signal {
           time: candles[sell_idx].time,
           kind: SignalKind::Sell,
           price: exit,
           reason: format!("卖({})", tags),
+          pnl_pct: None,
         });
       }
       si += 1;
@@ -780,8 +784,8 @@ pub fn compute_signals(
     let exit = candles[*sell_idx].close;
 
     // Flatten & dedup buy/sell tags
-    let buy_tags = dedup_tags(buy_entries.iter().flat_map(|(_, rs)| rs.iter().copied()));
-    let sell_tags = dedup_tags(sell_reasons.iter().copied());
+    let buy_tags = decompose_and_join(&buy_entries.iter().flat_map(|(_, rs)| rs.iter().copied()).collect::<Vec<_>>());
+    let sell_tags = decompose_and_join(&sell_reasons.iter().copied().collect::<Vec<_>>());
 
     let buy_idx = buy_entries[0].0;
     let total_entry = buy_entries
@@ -799,18 +803,20 @@ pub fn compute_signals(
         "买({}) @{:.2}→{:.2}({:+.1}%)",
         buy_tags, total_entry, exit, pnl
       ),
+      pnl_pct: Some(pnl),
     });
     out.push(Signal {
       time: candles[*sell_idx].time,
       kind: SignalKind::Sell,
       price: exit,
       reason: format!("卖({})", sell_tags),
+      pnl_pct: None,
     });
   }
 
   // ── Remaining open buys (no sell to close) ──
   if !open.is_empty() {
-    let tags = dedup_tags(open.iter().flat_map(|(_, rs)| rs.iter().copied()));
+    let tags = decompose_and_join(&open.iter().flat_map(|(_, rs)| rs.iter().copied()).collect::<Vec<_>>());
     let buy_idx = open[0].0;
     let total_entry = open.iter().map(|(i, _)| candles[*i].close).sum::<f64>() / open.len() as f64;
     out.push(Signal {
@@ -818,6 +824,7 @@ pub fn compute_signals(
       kind: SignalKind::Buy,
       price: total_entry,
       reason: format!("买({}) @{:.2}→持仓中", tags, total_entry),
+      pnl_pct: None,
     });
   }
 
@@ -828,6 +835,7 @@ pub fn compute_signals(
       kind: SignalKind::Buy,
       price: candles[j].close,
       reason: "KDJ J超卖(买)".into(),
+      pnl_pct: None,
     });
   }
   for &j in &ks.j_sell {
@@ -836,18 +844,37 @@ pub fn compute_signals(
       kind: SignalKind::Sell,
       price: candles[j].close,
       reason: "KDJ J超买(卖)".into(),
+      pnl_pct: None,
     });
   }
 
   out
 }
 
-/// Dedup tags, join with " & "
-fn dedup_tags(tags: impl Iterator<Item = &'static str>) -> String {
+/// Decompose compound tags into atomic tokens, dedup, and join with " & ".
+///
+/// e.g. ["kdj↑macd↑", "kdj↑支撑"] → "kdj↑ & macd↑ & 支撑"
+fn decompose_and_join(raw: &[&'static str]) -> String {
+  // Expand known compound tags into individual atoms.
+  let atoms: Vec<&'static str> = raw
+    .iter()
+    .flat_map(|t| match *t {
+      "kdj↑macd↑" => vec!["kdj↑", "macd↑"],
+      "kdj↑支撑"   => vec!["kdj↑", "支撑"],
+      "macd↑支撑"  => vec!["macd↑", "支撑"],
+      "kdj↓macd↓" => vec!["kdj↓", "macd↓"],
+      "kdj↓压力"   => vec!["kdj↓", "压力"],
+      "macd↓压力"  => vec!["macd↓", "压力"],
+      // Pass-through for non-compound tags (e.g. J-line signals).
+      other        => vec![other],
+    })
+    .collect();
+
+  // Dedup and join.
   let mut seen: Vec<&'static str> = Vec::new();
-  for t in tags {
-    if !seen.contains(&t) {
-      seen.push(t);
+  for atom in &atoms {
+    if !seen.contains(atom) {
+      seen.push(atom);
     }
   }
   seen.join(" & ")
