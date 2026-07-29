@@ -45,7 +45,7 @@ fi
 
 # ── Start backend ───────────────────────────────────────────────────────────
 echo -e "${BLUE}Starting Rust backend on port ${BACKEND_PORT}...${NC}"
-(cd "$BACKEND_DIR" && cargo run) &
+(cd "$BACKEND_DIR" && cargo run --release) &
 BACKEND_PID=$!
 
 # ── Wait for backend to be ready ────────────────────────────────────────────
