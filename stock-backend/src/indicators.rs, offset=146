@@ -1,0 +1,211 @@
+// ── Trading Signals (6-strategy table) ─────────────────────────────────────
+
+#[derive(Debug, Clone, Copy, serde::Serialize)]
+pub enum SignalKind { Buy, Sell }
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct Signal {
+    pub time: i64,
+    pub kind: SignalKind,
+    pub price: f64,
+    pub reason: &'static str,
+}
+
+/// BB middle band direction over last `period` bars.
+/// Positive = uptrend, negative = downtrend, near zero = flat.
+fn bb_mid_slope(bb: &[Option<BollingerPoint>], i: usize, period: usize) -> f64 {
+    if i < period { return 0.0; }
+    let start = i.saturating_sub(period - 1);
+    let mid_start = bb[start].as_ref().map(|p| p.middle).unwrap_or(0.0);
+    let mid_end   = bb[i].as_ref().map(|p| p.middle).unwrap_or(0.0);
+    if mid_start.abs() < 1e-9 { return 0.0; }
+    (mid_end - mid_start) / mid_start
+}
+
+/// KC middle band (EMA20) direction over last `period` bars.
+fn kc_mid_slope(kc: &[Option<KeltnerPoint>], i: usize, period: usize) -> f64 {
+    if i < period { return 0.0; }
+    let start = i.saturating_sub(period - 1);
+    let mid_start = kc[start].as_ref().map(|p| p.middle).unwrap_or(0.0);
+    let mid_end   = kc[i].as_ref().map(|p| p.middle).unwrap_or(0.0);
+    if mid_start.abs() < 1e-9 { return 0.0; }
+    (mid_end - mid_start) / mid_start
+}
+
+/// Check if price is near (within 1% of) a given level.
+fn near(price: f64, level: f64) -> bool {
+    price >= level * 0.99 && price <= level * 1.01
+}
+
+/// MACD bottom divergence: price new low but DIF higher than at prior low.
+fn has_bullish_divergence(
+    macd: &[Option<MacdPoint>], candles: &[Candle], i: usize, lookback: usize
+) -> bool {
+    if i < lookback { return false; }
+    let mc_i = match &macd[i] { Some(m) => m, _ => return false };
+    let price_i = candles[i].low;
+
+    let mut price_min = f64::INFINITY;
+    let mut dif_at_pmin = 0.0f64;
+    for j in i.saturating_sub(lookback)..i {
+        if candles[j].low < price_min {
+            price_min = candles[j].low;
+            dif_at_pmin = macd[j].as_ref().map(|m| m.dif).unwrap_or(0.0);
+        }
+    }
+
+    price_i < price_min * 0.998 && mc_i.dif > dif_at_pmin * 1.08
+}
+
+/// MACD top divergence: price new high but DIF lower than at prior high.
+fn has_bearish_divergence(
+    macd: &[Option<MacdPoint>], candles: &[Candle], i: usize, lookback: usize
+) -> bool {
+    if i < lookback { return false; }
+    let mc_i = match &macd[i] { Some(m) => m, _ => return false };
+    let price_i = candles[i].high;
+
+    let mut price_max = f64::NEG_INFINITY;
+    let mut dif_at_pmax = 0.0f64;
+    for j in i.saturating_sub(lookback)..i {
+        if candles[j].high > price_max {
+            price_max = candles[j].high;
+            dif_at_pmax = macd[j].as_ref().map(|m| m.dif).unwrap_or(0.0);
+        }
+    }
+
+    price_i > price_max * 1.002 && mc_i.dif < dif_at_pmax * 0.92
+}
+
+pub fn compute_signals(
+    candles:       &[Candle],
+    bollinger:     &[Option<BollingerPoint>],
+    keltner:       &[Option<KeltnerPoint>],
+    macd:          &[Option<MacdPoint>],
+    kdj:           &[Option<KdjPoint>],
+) -> Vec<Signal> {
+    let n = candles.len();
+    let mut signals = Vec::new();
+
+    let bb = |i: usize| bollinger.get(i).and_then(|x| x.as_ref());
+    let kc = |i: usize| keltner.get(i).and_then(|x| x.as_ref());
+    let mc = |i: usize| macd.get(i).and_then(|x| x.as_ref());
+    let kd = |i: usize| kdj.get(i).and_then(|x| x.as_ref());
+
+    for i in 50..n {
+        let Some(mc_i) = mc(i) else { continue };
+        let Some(mc_p) = mc(i - 1) else { continue };
+        let Some(mc_pp) = mc(i - 2) else { continue };
+        let Some(kd_i) = kd(i) else { continue };
+        let Some(kd_p) = kd(i - 1) else { continue };
+        let Some(bb_i) = bb(i) else { continue };
+        let Some(kc_i) = kc(i) else { continue };
+        let price = candles[i].close;
+
+        let kdj_golden = kd_p.k <= kd_p.d && kd_i.k > kd_i.d;
+        let kdj_death  = kd_p.k >= kd_p.d && kd_i.k < kd_i.d;
+        let macd_golden = mc_p.dif <= mc_p.dea && mc_i.dif > mc_i.dea;
+        let macd_death  = mc_p.dif >= mc_p.dea && mc_i.dif < mc_i.dea;
+
+        // Direction of midlines
+        let bb_mid_up   = bb_mid_slope(bollinger, i, 5) > 0.005;
+        let bb_mid_down = bb_mid_slope(bollinger, i, 5) < -0.002;
+
+        // ════════════════════════════════════════════════════════════
+        // 1. 🔥 强趋势买入 — 回调结束
+        //    MACD>0 或 MACD零轴金叉 + 回踩KC中轨 + KDJ金叉(30-50)
+        // ════════════════════════════════════════════════════════════
+        if macd_golden || mc_i.dif > 0.0 {
+            if near(price, kc_i.middle) && (bb_mid_up || !bb_mid_down) {
+                if kdj_golden && kd_i.k > 25.0 && kd_i.k < 55.0 {
+                    signals.push(Signal { time: candles[i].time, kind: SignalKind::Buy, price,
+                        reason: "🔥强趋势买入-回调结束" });
+                }
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // 2. 🔀 超跌反弹买入 — 左侧搏击
+        //    MACD<0 绿柱缩短或底背离 + 刺穿BB下轨 + KDJ<20金叉
+        // ════════════════════════════════════════════════════════════
+        let green_shrinking = mc_i.dif < 0.0 && mc_i.bar.abs() < mc_p.bar.abs();
+        let bull_div = has_bullish_divergence(macd, candles, i, 40);
+
+        if mc_i.dif < 0.0 && (green_shrinking || bull_div) {
+            if price <= bb_i.lower * 1.01 {
+                if kdj_golden && kd_i.k < 25.0 {
+                    signals.push(Signal { time: candles[i].time, kind: SignalKind::Buy, price,
+                        reason: "🔀超跌反弹-左侧搏击" });
+                }
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // 3. ✅ 持仓加仓 — 空中加油
+        //    MACD红柱加长 + 价格在BB/KC中轨上方 + KDJ中位(40-60)金叉
+        // ════════════════════════════════════════════════════════════
+        let red_lengthening = mc_i.dif > 0.0 && mc_i.bar > mc_p.bar && mc_p.bar > mc_pp.bar;
+        let above_mid = price > bb_i.middle && price > kc_i.middle;
+
+        if red_lengthening && above_mid {
+            if kdj_golden && kd_i.k > 40.0 && kd_i.k < 65.0 {
+                signals.push(Signal { time: candles[i].time, kind: SignalKind::Buy, price,
+                    reason: "✅空中加油-加仓" });
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // 4. ⚠️ 多单减仓 — 超买预警
+        //    MACD红柱缩短 + 触及BB上轨 + KDJ>80死叉
+        // ════════════════════════════════════════════════════════════
+        let red_shortening = mc_i.dif > 0.0 && mc_i.bar < mc_p.bar;
+
+        if red_shortening {
+            if price >= bb_i.upper * 0.99 {
+                if kdj_death && kd_i.k > 75.0 {
+                    signals.push(Signal { time: candles[i].time, kind: SignalKind::Sell, price,
+                        reason: "⚠️超买预警-减仓" });
+                }
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // 5. 🚨 趋势反转清仓 — 全面空头
+        //    MACD零轴上死叉或绿柱出现 + 跌破KC中轨 + KDJ(50-80)死叉
+        // ════════════════════════════════════════════════════════════
+        let macd_turn_bear = (macd_death && mc_i.dif > 0.0) || (mc_i.dif < 0.0 && mc_p.dif >= 0.0);
+
+        if macd_turn_bear {
+            if price < kc_i.middle * 0.99 && bb_mid_down {
+                if kdj_death && kd_i.k > 45.0 && kd_i.k < 85.0 {
+                    signals.push(Signal { time: candles[i].time, kind: SignalKind::Sell, price,
+                        reason: "🚨趋势反转-清仓" });
+                }
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // 6. 📉 做空/融券卖出 — 下跌趋势反弹结束
+        //    MACD<0 + 反弹至KC中轨/BB上轨遇阻 + KDJ(50-80)死叉
+        // ════════════════════════════════════════════════════════════
+        if mc_i.dif < 0.0 {
+            let at_resistance = near(price, kc_i.middle) || price >= bb_i.upper * 0.99;
+            if at_resistance {
+                if kdj_death && kd_i.k > 50.0 && kd_i.k < 85.0 {
+                    signals.push(Signal { time: candles[i].time, kind: SignalKind::Sell, price,
+                        reason: "📉反弹结束-做空" });
+                }
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        // Bonus: top divergence + KDJ > 70 → sell
+        // ════════════════════════════════════════════════════════════
+        if has_bearish_divergence(macd, candles, i, 60) && kd_i.j > 70.0 {
+            signals.push(Signal { time: candles[i].time, kind: SignalKind::Sell, price,
+                reason: "顶背离-KDJ>70" });
+        }
+    }
+
+    signals
+}

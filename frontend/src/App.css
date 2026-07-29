@@ -1,0 +1,291 @@
+/* ── Layout ───────────────────────────────────────────── */
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ──────────────────────────────────────────── */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+.app-header h1 {
+  white-space: nowrap;
+  font-size: 20px;
+}
+
+.app-header h1 .dot {
+  color: var(--accent);
+}
+
+/* ── Main area ───────────────────────────────────────── */
+
+.app-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Sidebar ─────────────────────────────────────────── */
+
+.sidebar {
+  width: 280px;
+  min-width: 280px;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Chart pane ──────────────────────────────────────── */
+
+.chart-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chart-pane .placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 16px;
+  gap: 8px;
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.chart-header .stock-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chart-header .stock-label .symbol {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-h);
+}
+
+.chart-header .stock-label .name {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.chart-container {
+  flex: 1;
+  position: relative;
+}
+
+/* ── Stock Search ────────────────────────────────────── */
+
+.stock-search {
+  position: relative;
+  width: 320px;
+}
+
+.stock-search input {
+  width: 100%;
+}
+
+.stock-search .dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.stock-search .dropdown-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.1s;
+}
+
+.stock-search .dropdown-item:hover {
+  background: var(--accent-bg);
+}
+
+.stock-search .dropdown-item .code {
+  font-weight: 600;
+  color: var(--text-h);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.stock-search .dropdown-item .name {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.stock-search .dropdown-item .market {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  margin-left: 8px;
+}
+
+.stock-search .no-results,
+.stock-search .loading,
+.stock-search .error {
+  padding: 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.stock-search .error {
+  color: var(--danger);
+}
+
+/* ── Stock List ──────────────────────────────────────── */
+
+.stock-list {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+}
+
+.stock-list .list-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stock-list .list-header .count {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.stock-list .list-items {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.stock-list .list-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+
+.stock-list .list-item:hover {
+  background: var(--accent-bg);
+}
+
+.stock-list .list-item.active {
+  background: var(--accent-bg);
+  border-left: 3px solid var(--accent);
+  padding-left: 13px;
+}
+
+.stock-list .list-item .info .code {
+  font-weight: 600;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-h);
+}
+
+.stock-list .list-item .info .name {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.stock-list .list-item .remove-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s;
+}
+
+.stock-list .list-item:hover .remove-btn {
+  opacity: 1;
+}
+
+.stock-list .list-item .remove-btn:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.stock-list .empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ── Utils ───────────────────────────────────────────── */
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+}
+
+.btn-ghost:hover {
+  background: var(--bg-input);
+}
