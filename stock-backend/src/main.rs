@@ -10,8 +10,6 @@ use tower_http::services::ServeDir;
 async fn main() -> anyhow::Result<()> {
   let app = Router::new()
     .route("/api/health", get(api::health))
-    .route("/api/candles", get(api::get_candles))
-    .route("/api/minutes", get(api::get_minutes))
     .route("/api/indicators", get(api::get_indicators))
     .route("/api/search", get(api::search_stocks))
     .fallback_service(ServeDir::new("../frontend/dist"))

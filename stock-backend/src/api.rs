@@ -37,17 +37,6 @@ pub struct SearchQuery {
   pub keyword: String,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct MinuteQuery {
-  pub symbol: String,
-  #[serde(default = "default_period")]
-  pub period: String,
-}
-
-fn default_period() -> String {
-  "5".into()
-}
-
 #[derive(Debug, Serialize)]
 pub struct IndicatorsResponse {
   pub candles: Vec<Candle>,
@@ -64,28 +53,6 @@ pub struct IndicatorsResponse {
 /// GET /api/health
 pub async fn health() -> impl IntoResponse {
   Json(serde_json::json!({ "status": "ok", "service": "stock-backend" }))
-}
-
-pub async fn get_candles(Query(params): Query<StockQuery>) -> impl IntoResponse {
-  match stock::fetch_stock_data(&params.symbol, params.days).await {
-    Ok(candles) => Json(candles).into_response(),
-    Err(e) => (
-      StatusCode::INTERNAL_SERVER_ERROR,
-      Json(serde_json::json!({"error": format!("Failed: {}", e)})),
-    )
-      .into_response(),
-  }
-}
-
-pub async fn get_minutes(Query(params): Query<MinuteQuery>) -> impl IntoResponse {
-  match stock::fetch_minute_data(&params.symbol, &params.period).await {
-    Ok(candles) => Json(candles).into_response(),
-    Err(e) => (
-      StatusCode::INTERNAL_SERVER_ERROR,
-      Json(serde_json::json!({"error": format!("Failed: {}", e)})),
-    )
-      .into_response(),
-  }
 }
 
 pub async fn get_indicators(Query(params): Query<StockQuery>) -> impl IntoResponse {
