@@ -66,11 +66,20 @@ echo -e "${BLUE}Starting Vite frontend dev server...${NC}"
 npm --prefix "$FRONTEND_DIR" run dev &
 FRONTEND_PID=$!
 
+# Detect public IP
+PUBLIC_IP=$(curl -s --max-time 3 ifconfig.me 2>/dev/null || echo "")
+if [ -z "$PUBLIC_IP" ]; then
+  PUBLIC_IP=$(curl -s --max-time 3 icanhazip.com 2>/dev/null || echo "")
+fi
+
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}  Stock Dashboard is starting up${NC}"
 echo -e "${GREEN}  Backend:  http://localhost:${BACKEND_PORT}${NC}"
 echo -e "${GREEN}  Frontend: http://localhost:5173${NC}"
+if [ -n "$PUBLIC_IP" ]; then
+  echo -e "${GREEN}  Public:   http://${PUBLIC_IP}:5173${NC}"
+fi
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo -e "Press ${RED}Ctrl+C${NC} to stop both servers"
