@@ -166,6 +166,18 @@ export default function App() {
     setActiveSymbol((current) => (current === symbol ? null : current));
   }, []);
 
+  const handleReorderStock = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      setStocks((prev) => {
+        const next = [...prev];
+        const [moved] = next.splice(fromIndex, 1);
+        next.splice(toIndex, 0, moved);
+        return next;
+      });
+    },
+    []
+  );
+
   const activeStock = stocks.find((s) => s.symbol === activeSymbol);
 
   const totalClosedPnl = useMemo(() => {
@@ -191,6 +203,7 @@ export default function App() {
             activeSymbol={activeSymbol}
             onSelect={setActiveSymbol}
             onRemove={handleRemoveStock}
+            onReorder={handleReorderStock}
           />
         </aside>
 

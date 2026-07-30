@@ -39,8 +39,8 @@
 /* ── Sidebar ─────────────────────────────────────────── */
 
 .sidebar {
-  width: 280px;
-  min-width: 280px;
+  width: 210px;
+  min-width: 210px;
   background: var(--bg-card);
   border-right: 1px solid var(--border);
   display: flex;
@@ -182,7 +182,7 @@
 }
 
 .stock-list .list-header {
-  padding: 12px 16px;
+  padding: 10px 8px;
   border-bottom: 1px solid var(--border);
   font-size: 12px;
   text-transform: uppercase;
@@ -208,7 +208,7 @@
 }
 
 .stock-list .list-item {
-  padding: 10px 16px;
+  padding: 8px 8px;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
@@ -224,7 +224,7 @@
 .stock-list .list-item.active {
   background: var(--accent-bg);
   border-left: 3px solid var(--accent);
-  padding-left: 13px;
+  padding-left: 5px;
 }
 
 .stock-list .list-item .info .code {
@@ -260,6 +260,77 @@
 .stock-list .list-item .remove-btn:hover {
   color: var(--danger);
   background: rgba(239, 68, 68, 0.1);
+}
+
+/* Drag handle */
+.stock-list .list-item .drag-handle {
+  width: 3px;
+  height: 10px;
+  margin-right: 3px;
+  flex-shrink: 0;
+  cursor: grab;
+  opacity: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--text-muted) 0px,
+    var(--text-muted) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  border-radius: 1px;
+  transition: opacity 0.1s;
+}
+.stock-list .list-item:hover .drag-handle {
+  opacity: 0.35;
+}
+.stock-list .list-item .drag-handle:active {
+  cursor: grabbing;
+}
+
+/* position:relative needed for ::before drop-indicator */
+.stock-list .list-item {
+  position: relative;
+}
+
+/* Dragging state */
+.stock-list .list-item.dragging {
+  opacity: 0.3;
+}
+
+/* Drop-before indicator — accent line above the item */
+.stock-list .list-item.drop-before::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: -1px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  z-index: 1;
+}
+
+/* Drop-after indicator — accent line below the item */
+.stock-list .list-item.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  z-index: 1;
+}
+
+/* Suppress hover background on drop-target items so the line stands out */
+.stock-list .list-item.drop-before:hover,
+.stock-list .list-item.drop-after:hover {
+  background: inherit;
+}
+.stock-list .list-item.drop-before.active,
+.stock-list .list-item.drop-after.active {
+  background: var(--accent-bg);
 }
 
 .stock-list .empty {
