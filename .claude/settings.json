@@ -98,7 +98,9 @@
       "Bash(find /home/swarm/.cargo/registry/src -path '*/akshare-0.1*/src/provider/tencent.rs')",
       "Read(//home/swarm/.cargo/registry/src/**)",
       "Bash(find /home/swarm/.cargo/registry/src -path '*/akshare-0.1*/src/provider/market_client/a_share/candles.rs')",
-      "Bash(\"cd /home/swarm/rust_project/stock-dashboard/frontend && npx tsc --noEmit 2>&1\", \"description\": \"Check frontend TypeScript compilation\", \"timeout\": 30000})"
+      "Bash(\"cd /home/swarm/rust_project/stock-dashboard/frontend && npx tsc --noEmit 2>&1\", \"description\": \"Check frontend TypeScript compilation\", \"timeout\": 30000})",
+      "Bash(git push *)",
+      "Bash(\"grep -n \\\\\"bb_squeeze_signals\\\\\" /tmp/claude-1000/-home-swarm-rust-project-stock-dashboard/d150cca7-662c-4ceb-842e-3a299768916e/indicators_original*.txt 2>/dev/null || echo \\\\\"No original snapshot\\\\\" && echo \\\\\"--- Original build warnings likely had the same dead_code\\\\\"\")"
     ],
     "additionalDirectories": [
       "/home/swarm/rust_project/stock-dashboard"

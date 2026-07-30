@@ -1,25 +1,23 @@
-mod api;
-mod indicators;
-mod stock;
+mod models;
+mod controllers;
+mod services;
 
-use axum::{Router, routing::get};
+use axum::Router;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-  let app = Router::new()
-    .route("/api/health", get(api::health))
-    .route("/api/indicators", get(api::get_indicators))
-    .route("/api/search", get(api::search_stocks))
-    .fallback_service(ServeDir::new("../frontend/dist"))
-    .layer(CorsLayer::permissive());
+    let app = Router::new()
+        .nest("/api", controllers::router())
+        .fallback_service(ServeDir::new("../frontend/dist"))
+        .layer(CorsLayer::permissive());
 
-  let addr = "0.0.0.0:3000";
-  println!("🚀 Stock Dashboard backend listening on http://{}", addr);
+    let addr = "0.0.0.0:3000";
+    println!("🚀 Stock Dashboard backend listening on http://{}", addr);
 
-  let listener = tokio::net::TcpListener::bind(addr).await?;
-  axum::serve(listener, app).await?;
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
 
-  Ok(())
+    Ok(())
 }

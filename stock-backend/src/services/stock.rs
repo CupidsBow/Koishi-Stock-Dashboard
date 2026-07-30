@@ -1,7 +1,7 @@
 use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 
-use crate::api::{Candle, StockInfo};
+use crate::models::{Candle, StockInfo};
 
 /// Map a 6-digit A-share symbol to the Tencent market prefix.
 ///
