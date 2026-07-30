@@ -9,6 +9,8 @@ use axum::Router;
 /// Each controller defines its own route(s) co-located with its handler
 /// functions.  This function merges them so `main.rs` only needs one
 /// `.nest("/api", controllers::router())` call.
+///
+/// Returns `Router<()>` — state is injected in `main.rs`.
 pub fn router() -> Router {
     Router::new()
         .merge(health::router())

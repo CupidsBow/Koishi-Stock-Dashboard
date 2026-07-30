@@ -1,3 +1,4 @@
+pub mod db;
 pub mod stock;
 pub mod indicators;
 

@@ -100,7 +100,22 @@
       "Bash(find /home/swarm/.cargo/registry/src -path '*/akshare-0.1*/src/provider/market_client/a_share/candles.rs')",
       "Bash(\"cd /home/swarm/rust_project/stock-dashboard/frontend && npx tsc --noEmit 2>&1\", \"description\": \"Check frontend TypeScript compilation\", \"timeout\": 30000})",
       "Bash(git push *)",
-      "Bash(\"grep -n \\\\\"bb_squeeze_signals\\\\\" /tmp/claude-1000/-home-swarm-rust-project-stock-dashboard/d150cca7-662c-4ceb-842e-3a299768916e/indicators_original*.txt 2>/dev/null || echo \\\\\"No original snapshot\\\\\" && echo \\\\\"--- Original build warnings likely had the same dead_code\\\\\"\")"
+      "Bash(\"grep -n \\\\\"bb_squeeze_signals\\\\\" /tmp/claude-1000/-home-swarm-rust-project-stock-dashboard/d150cca7-662c-4ceb-842e-3a299768916e/indicators_original*.txt 2>/dev/null || echo \\\\\"No original snapshot\\\\\" && echo \\\\\"--- Original build warnings likely had the same dead_code\\\\\"\")",
+      "Bash(git check-ignore *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(\"grep -q '.env' /home/swarm/rust_project/stock-dashboard/.gitignore 2>/dev/null && echo 'already in gitignore' || echo 'NOT in gitignore'\")",
+      "Bash(sudo -u postgres psql -c \"\\\\l\")",
+      "Bash(psql -U postgres -c \"\\\\l\")",
+      "Read(//etc/postgresql/16/main/**)",
+      "Bash(grep -v \"^$\")",
+      "Bash(psql -h localhost -U swarm -d postgres -c \"\\\\du\")",
+      "Bash(psql -h localhost -U postgres -d postgres -c \"\\\\du\")",
+      "Bash(psql -c \"\\\\du\")",
+      "Read(//etc/postgresql/**)",
+      "Read(//var/lib/postgresql/**)",
+      "Bash(su - postgres -c \"psql -c '\\\\du'\")",
+      "Bash(sudo -u postgres psql -c '\\\\du')",
+      "Bash(cat /etc/postgresql/16/main/pg_hba.conf 2>&1 || echo \"Permission denied\")"
     ],
     "additionalDirectories": [
       "/home/swarm/rust_project/stock-dashboard"
