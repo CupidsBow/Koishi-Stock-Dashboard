@@ -10,10 +10,10 @@ use axum::Router;
 /// functions.  This function merges them so `main.rs` only needs one
 /// `.nest("/api", controllers::router())` call.
 ///
-/// Returns `Router<()>` — state is injected in `main.rs`.
+/// Returns `Router` — state is injected in `main.rs` via `.with_state()`.
 pub fn router() -> Router {
-    Router::new()
-        .merge(health::router())
-        .merge(indicators::router())
-        .merge(search::router())
+  Router::new()
+    .merge(health::router())
+    .merge(indicators::router())
+    .merge(search::router())
 }
