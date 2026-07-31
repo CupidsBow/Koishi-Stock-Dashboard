@@ -2,10 +2,27 @@ import type { IndicatorsResponse, StockInfo } from "./types";
 
 const BASE = "/api";
 
-/** Fetch candles + Bollinger Bands + KDJ in one call. */
-export async function fetchIndicators(symbol: string, days?: number): Promise<IndicatorsResponse> {
+export interface FactorToggle {
+  quantile: boolean;
+  reversal: boolean;
+  divergence: boolean;
+}
+
+/** Fetch indicators. */
+export async function fetchIndicators(
+  symbol: string,
+  days?: number,
+  strategy: string = "default",
+  forward: number = 5,
+  toggle: FactorToggle = { quantile: true, reversal: true, divergence: true },
+): Promise<IndicatorsResponse> {
   let url = `${BASE}/indicators?symbol=${encodeURIComponent(symbol)}`;
   if (days !== undefined) url += `&days=${days}`;
+  url += `&strategy=${encodeURIComponent(strategy)}`;
+  url += `&forward=${forward}`;
+  url += `&quantile=${toggle.quantile}`;
+  url += `&reversal=${toggle.reversal}`;
+  url += `&divergence=${toggle.divergence}`;
   const res = await fetch(url);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

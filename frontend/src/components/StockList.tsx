@@ -22,10 +22,6 @@ interface DropTarget {
   side: DropSide;
 }
 
-function dropTargetKey(t: DropTarget): string {
-  return `${t.idx}:${t.side}`;
-}
-
 export default function StockList({
   stocks,
   activeSymbol,

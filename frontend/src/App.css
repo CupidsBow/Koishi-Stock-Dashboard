@@ -352,6 +352,53 @@
   white-space: nowrap;
 }
 
+/* ── Strategy Switch ────────────────────────────────────── */
+
+.strategy-switch {
+  display: flex;
+  gap: 0;
+  background: var(--bg-input);
+  border-radius: 8px;
+  padding: 2px;
+  margin: 0 12px;
+}
+
+.switch-option {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.switch-option.active {
+  background: var(--accent);
+  color: #fff;
+  cursor: default;
+}
+
+.switch-option:not(.active):hover {
+  color: var(--text);
+  background: var(--bg-hover, rgba(255,255,255,0.06));
+}
+
+/* ── Factor Badge ───────────────────────────────────────── */
+
+.factor-badge {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-right: 12px;
+  white-space: nowrap;
+}
+
+.alpha-score {
+  font-weight: 600;
+  font-family: var(--mono);
+}
+
 /* ── Utils ───────────────────────────────────────────── */
 
 .btn-primary {
@@ -370,4 +417,25 @@
 
 .btn-ghost:hover {
   background: var(--bg-input);
+}.signal-toggles {
+  display: flex;
+  gap: 8px;
+  margin: 0 12px;
 }
+
+.toggle-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.toggle-label input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+

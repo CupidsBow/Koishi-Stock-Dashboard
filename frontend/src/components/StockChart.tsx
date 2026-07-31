@@ -180,7 +180,7 @@ class BBSignalPrimitive implements ISeriesPrimitive<Time> {
     const series = this._series;
     if (!chart || !series || !candles.length) return [];
 
-    const tradeSignals = signals.filter((s) => s.reason.startsWith("买(") || s.reason.startsWith("卖("));
+    const tradeSignals = signals.filter((s) => s.kind === "Buy" || s.kind === "Sell");
     if (!tradeSignals.length) return [];
 
     const candleByTime = new Map<number, Candle>();
@@ -224,11 +224,11 @@ export default function StockChart({
   macd,
   kdj,
   signals,
-  regime,
+  regime: _regime,
   label,
   onReachLeftEdge,
 }: Props) {
-  const stockSymbol = label ?? "";
+  void (label as unknown);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);

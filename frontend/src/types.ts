@@ -60,6 +60,30 @@ export interface Signal {
   pnl_pct?: number | null;
 }
 
+// ── New factor-model types ───────────────────────────────────────────────
+
+/** Per-factor evaluation metrics from IC analysis. */
+export interface FactorEval {
+  name: string;
+  ic_mean: number;
+  ir: number;
+  weight: number;
+  is_valid: boolean;
+  ic_series: (number | null)[];
+}
+
+/** Composite alpha score for one time point. */
+export interface AlphaScore {
+  time: number;
+  momentum: number;
+  volatility: number;
+  volume: number;
+  trend: number;
+  total: number;
+}
+
+// ── API response ─────────────────────────────────────────────────────────
+
 export interface IndicatorsResponse {
   candles: Candle[];
   bollinger: (BollingerPoint | null)[];
@@ -70,4 +94,8 @@ export interface IndicatorsResponse {
   rsi: (number | null)[];
   regime: string;
   signals: Signal[];
+  // New factor-model fields
+  factor_evals: FactorEval[];
+  factor_scores: (AlphaScore | null)[];
+  signals_v2: Signal[];
 }
