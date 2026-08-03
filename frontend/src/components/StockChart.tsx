@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   createChart,
   CandlestickSeries,
@@ -46,7 +46,7 @@ class SignalLabelRenderer implements IPrimitivePaneRenderer {
   constructor(
     private readonly _x: number,
     private readonly _y: number,
-    private readonly _text: string,
+    _text: string,
     private readonly _color: string,
     private readonly _isBuy: boolean,
   ) {}
@@ -56,78 +56,30 @@ class SignalLabelRenderer implements IPrimitivePaneRenderer {
       const ctx = scope.context;
       ctx.save();
 
-      const arrow = this._isBuy ? "B" : "S";
-      const fontSize = 11;
+      const isBuy = this._isBuy;
+      const color = this._color;
       const labelX = this._x;
-      const labelY = this._y;  // buy=below candle low+offset, sell=above candle high-offset
+      const labelY = this._y;
 
-      ctx.font = `${fontSize}px sans-serif`;
-      ctx.textAlign = "center";
+      // ── Compact dot: just a colored circle with "B" or "S" ──
+      const r = 7;
 
-      const metrics = ctx.measureText(this._text);
-      const tw = metrics.width;
-      const th = fontSize + 4;
-
-      const arrowBoxW = 18;
-      const arrowBoxH = 16;
-      const gap = 3;
-
-      // Placement: B/S box goes between candle and text box
-      // buy (labelY is below candle): candle ... arrow(below) ... text(below arrow)
-      // sell (labelY is above candle): candle ... arrow(above) ... text(above arrow)
-      const arrowY = this._isBuy
-        ? labelY                         // arrow starts at labelY, extends downward
-        : labelY - arrowBoxH;            // arrow ends at labelY, extends upward
-
-      const bgY = this._isBuy
-        ? arrowY + arrowBoxH + gap       // text below arrow
-        : arrowY - gap - th;             // text above arrow
-
-      // Arrow box — closer to candle
-      ctx.fillStyle = this._color + "80";
-      this._roundRect(ctx, labelX - arrowBoxW / 2, arrowY, arrowBoxW, arrowBoxH, 3);
+      ctx.beginPath();
+      ctx.arc(labelX, isBuy ? labelY - 2 : labelY + 2, r, 0, Math.PI * 2);
+      ctx.fillStyle = color;
       ctx.fill();
 
-      // Arrow text
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 10px sans-serif";
-      ctx.fillText(arrow, labelX, arrowY + 12);
-
-      // Text background — further from candle
-      ctx.fillStyle = this._color + "50";
-      this._roundRect(ctx, labelX - tw / 2 - 4, bgY, tw + 8, th, 3);
-      ctx.fill();
-
-      // Label text
-      ctx.fillStyle = "#ffffff";
-      ctx.font = `${fontSize}px sans-serif`;
-      ctx.fillText(this._text, labelX, bgY + fontSize + 1);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(isBuy ? "B" : "S", labelX, isBuy ? labelY - 2 : labelY + 2);
 
       ctx.restore();
     });
   }
 
-  private _roundRect(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    r: number,
-  ): void {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.arcTo(x + w, y, x + w, y + r, r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
-    ctx.lineTo(x + r, y + h);
-    ctx.arcTo(x, y + h, x, y + h - r, r);
-    ctx.lineTo(x, y + r);
-    ctx.arcTo(x, y, x + r, y, r);
-    ctx.closePath();
   }
-}
 
 // ── Pane view wrapper ─────────────────────────────────────────────────────
 
@@ -213,6 +165,16 @@ class BBSignalPrimitive implements ISeriesPrimitive<Time> {
 
     return views;
   }
+
+  /** Find the signal closest to a chart time position. */
+  getSignalsAt(
+    time: number,
+  ): Signal[] {
+    const { signals } = this._data;
+    return signals.filter(
+      (s) => s.time === time && (s.kind === "Buy" || s.kind === "Sell")
+    );
+  }
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -259,6 +221,7 @@ export default function StockChart({
   const kdjRef = useRef(kdj);
   kdjRef.current = kdj;
   const onReachLeftEdgeRef = useRef(onReachLeftEdge);
+  const [hoveredSignals, setHoveredSignals] = useState<Signal[]>([]);
   onReachLeftEdgeRef.current = onReachLeftEdge;
   const firedAtCount = useRef(0);
 
@@ -481,6 +444,22 @@ export default function StockChart({
         flexDirection: "column",
         minHeight: 0,
       }}
+      onMouseMove={(e) => {
+        if (!chartRef.current || !candleSeriesRef.current) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const cx = e.clientX - rect.left;
+        const t = chartRef.current.timeScale().coordinateToTime(cx) as number;
+        if (t) {
+          const rt = candlesRef.current.reduce((prev, curr) =>
+            Math.abs(curr.time - t) < Math.abs(prev.time - t) ? curr : prev
+          ).time;
+          const sig = bbSignalPrimitiveRef.current?.getSignalsAt(rt);
+          setHoveredSignals(sig ?? []);
+        } else {
+          setHoveredSignals([]);
+        }
+      }}
+      onMouseLeave={() => setHoveredSignals([])}
     >
       <div
         style={{
@@ -553,6 +532,42 @@ export default function StockChart({
       </div>
 
       <div ref={containerRef} className="chart-container" />
+
+      {/* Hover tooltip */}
+      {hoveredSignals.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            left: "50%",
+            bottom: 8,
+            transform: "translateX(-50%)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+            zIndex: 10,
+            pointerEvents: "none",
+            maxWidth: "90%",
+          }}
+        >
+          {hoveredSignals.map((s: Signal, i: number) => (
+            <div
+              key={i}
+              style={{
+                background: s.kind === "Buy" ? "#dc2626" : "#16a34a",
+                color: "#fff",
+                padding: "5px 14px",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                textAlign: "center",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {s.kind === "Buy" ? "B" : "S"} {s.reason}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
