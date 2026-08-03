@@ -21,7 +21,9 @@ async fn main() -> anyhow::Result<()> {
 
   let app = Router::new()
     .nest("/api", controllers::router())
-    .fallback_service(ServeDir::new("../frontend/dist"))
+    .fallback_service(ServeDir::new(
+      std::env::var("STATIC_DIR").unwrap_or_else(|_| "../frontend/dist".into()),
+    ))
     .layer(CorsLayer::permissive())
     .layer(Extension(pool));
 

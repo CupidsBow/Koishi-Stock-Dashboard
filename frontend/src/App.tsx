@@ -296,81 +296,88 @@ export default function App() {
           {activeStock && !chartError && candles.length > 0 && indicators && (
             <>
               <div className="chart-header">
-                <div className="stock-label">
-                  <span className="symbol">{activeStock.symbol}</span>
-                  <span className="name">{activeStock.name} · {activeStock.market}</span>
+                <div className="header-left">
+                  <div className="stock-label">
+                    <span className="symbol">{activeStock.symbol}</span>
+                    <span className="name">{activeStock.name} · {activeStock.market}</span>
+                  </div>
                 </div>
 
-                {/* Strategy toggle — always visible when we have data */}
-                <div className="strategy-switch">
-                  <span
-                    className={`switch-option ${strategyMode === "cta" ? "active" : ""}`}
-                    onClick={() => setStrategyMode("cta")}
-                  >
-                    CTA规则
-                  </span>
-                  <span
-                    className={`switch-option ${strategyMode === "alpha" ? "active" : ""}`}
-                    onClick={() => setStrategyMode("alpha")}
-                  >
-                    因子Alpha
-                  </span>
-                </div>
+                <div className="header-center">
+                  {/* Strategy toggle */}
+                  <div className="strategy-switch-wrapper">
+                    <div className="strategy-switch">
+                      <span
+                        className={`switch-option ${strategyMode === "cta" ? "active" : ""}`}
+                        onClick={() => setStrategyMode("cta")}
+                      >
+                        CTA规则
+                      </span>
+                      <span
+                        className={`switch-option ${strategyMode === "alpha" ? "active" : ""}`}
+                        onClick={() => setStrategyMode("alpha")}
+                      >
+                        因子Alpha
+                      </span>
+                    </div>
+                  </div>
 
-                {/* Signal type toggles (alpha mode only) */}
-                {strategyMode === "alpha" && (
-                  <div className="signal-toggles">
+                  {/* Signal type toggles — always reserve space */}
+                  <div className={`signal-toggles ${strategyMode === "alpha" ? "visible" : "hidden"}`}>
                     <label className="toggle-label">
                       <input type="checkbox" checked={signalToggles.quantile}
                         onChange={(e) => setSignalToggles({ ...signalToggles, quantile: e.target.checked })} />
-                      分位数信号
+                      分位数
                     </label>
                     <label className="toggle-label">
                       <input type="checkbox" checked={signalToggles.reversal}
                         onChange={(e) => setSignalToggles({ ...signalToggles, reversal: e.target.checked })} />
-                      转折信号
+                      转折
                     </label>
                     <label className="toggle-label">
                       <input type="checkbox" checked={signalToggles.divergence}
                         onChange={(e) => setSignalToggles({ ...signalToggles, divergence: e.target.checked })} />
-                      背离信号
+                      背离
                     </label>
                   </div>
-                )}
 
-                {/* Switching indicator */}
-                {switchingMode && (
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                    加载新策略…
+                  {/* Loading indicator — fixed-width slot */}
+                  <span className="loading-slot">
+                    {switchingMode ? "加载新策略…" : ""}
                   </span>
-                )}
+                </div>
 
-                {/* Factor info (alpha mode) */}
-                {strategyMode === "alpha" && indicators.factor_evals && indicators.factor_evals.length > 0 && (
-                  <div className="factor-badge">
-                    因子 {validFactorCount}/{indicators.factor_evals.length} 有效
-                    {alphaScore !== null && (
-                      <span className="alpha-score" style={{
-                        color: alphaScore >= 0 ? "#ef4444" : "#22c55e",
-                      }}>
-                        {" "}Alpha {alphaScore.toFixed(2)}
-                      </span>
-                    )}
+                <div className="header-right">
+                  {/* Factor info — always reserve space */}
+                  <div className={`factor-slot ${strategyMode === "alpha" && indicators.factor_evals && indicators.factor_evals.length > 0 ? "visible" : "hidden"}`}>
+                    <div className="factor-badge">
+                      因子 {validFactorCount}/{indicators.factor_evals?.length ?? 0} 有效
+                      {alphaScore !== null && (
+                        <span className="alpha-score" style={{
+                          color: alphaScore >= 0 ? "#ef4444" : "#22c55e",
+                        }}>
+                          {" "}Alpha {alphaScore.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                )}
 
-                {/* PnL badge */}
-                {currentPnl !== null && (
-                  <div
-                    className="pnl-badge"
-                    style={{ color: currentPnl >= 0 ? "#ef4444" : "#22c55e" }}
-                  >
-                    {pnlLabel} {currentPnl >= 0 ? "+" : ""}{currentPnl.toFixed(2)}%
-                  </div>
-                )}
+                  {/* PnL badge */}
+                  {currentPnl !== null && (
+                    <div
+                      className="pnl-badge"
+                      style={{ color: currentPnl >= 0 ? "#ef4444" : "#22c55e" }}
+                    >
+                      {pnlLabel} {currentPnl >= 0 ? "+" : ""}{currentPnl.toFixed(2)}%
+                    </div>
+                  )}
 
+                </div>
+                {/* Lazy-load — absolute overlay on chart container */}
                 {loadingMore && (
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>加载更多数据…</span>
+                  <span style={{ position: "absolute", right: 16, top: 14, fontSize: 12, color: "var(--text-muted)", zIndex: 3 }}>
+                    加载更多数据…
+                  </span>
                 )}
               </div>
 
