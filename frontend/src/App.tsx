@@ -92,7 +92,7 @@ function mergeIndicators(older: IndicatorsResponse, newer: IndicatorsResponse): 
     regime:   older.regime || newer.regime || "震荡市",
     signals:  dedupSignals(older.signals, newer.signals),
     factor_evals: older.factor_evals?.length ? older.factor_evals : newer.factor_evals,
-    factor_scores: pickOlder(older.factor_scores || []),
+    factor_scores: older.factor_scores?.length ? pickOlder(older.factor_scores) : (newer.factor_scores || []),
     signals_v2: dedupSignals(older.signals_v2 || [], newer.signals_v2 || []),
   };
 }
@@ -157,8 +157,26 @@ export default function App() {
         }
       });
     return () => { cancelled = true; };
-  }, [activeSymbol, selectedStrategy, signalToggles]);
+  }, [activeSymbol, selectedStrategy]);
 
+  
+  // Refresh when toggles change (preserve lazy-load depth)
+  useEffect(() => {
+    if (!activeSymbol || !candles.length) return;
+    let cancelled = false;
+    setSwitchingMode(true);
+    fetchIndicators(activeSymbol, candles.length, selectedStrategy, 5, signalToggles)
+      .then((data) => {
+        if (!cancelled) {
+          setIndicators(data);
+          setSwitchingMode(false);
+        }
+      })
+      .catch(() => { if (!cancelled) setSwitchingMode(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signalToggles]);
+  
   // Lazy load more history
   const handleReachLeftEdge = useCallback(async () => {
     if (!activeSymbol || loadingMoreRef.current) return;
