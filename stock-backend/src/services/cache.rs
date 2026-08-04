@@ -25,7 +25,7 @@ fn cache_ttl() -> chrono::Duration {
   if market_is_open_now() {
     Duration::minutes(5)
   } else {
-    Duration::hours(4)
+    Duration::hours(2)
   }
 }
 
