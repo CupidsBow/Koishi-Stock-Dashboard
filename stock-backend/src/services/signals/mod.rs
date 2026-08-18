@@ -1,16 +1,24 @@
 //! Factor-based signal generation — Stage 4 of the prediction pipeline.
 //!
-//! Converts `AlphaScore` series into actionable `Signal` entries using three
-//! complementary strategies:
+//! Converts `AlphaScore` series into actionable entries:
+//!
+//! **Factor strategy** (three complementary rules):
 //!   1. Quantile threshold — score exceeds historical percentiles
 //!   2. Reversal — score crosses zero with momentum
 //!   3. Divergence — price and score diverge at extremes
+//!
+//! **Turtle strategy** (state-machine pyramiding):
+//!   Entry / Add / Exit based on alpha z-score thresholds and alpha
+//!   improvement relative to entry, with cooldown and stop-loss.
 
 pub mod divergence;
 pub mod quantile;
 pub mod reversal;
+pub mod turtle;
 
 use crate::models::{AlphaScore, Candle, Signal, SignalKind};
+
+pub use turtle::{finalize_actions, generate_turtle_actions, TurtleConfig};
 
 /// Configuration for signal generation thresholds.
 pub struct SignalConfig {

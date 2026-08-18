@@ -103,12 +103,16 @@
   flex-shrink: 0;
 }
 
-.header-right .factor-slot {
+.header-right .info-slot {
   margin-left: auto;
 }
 
-.header-right .factor-slot.hidden {
-  margin-left: auto;
+.info-slot.hidden {
+  visibility: hidden;
+}
+
+.info-slot.visible {
+  visibility: visible;
 }
 
 /* Stock label */
@@ -156,18 +160,11 @@
   visibility: visible;
 }
 
-/* Factor slot — hide when empty but keep space reserved */
+/* Info slot — shared by factor badge and turtle stats, never both at once */
 
-.factor-slot {
+.info-slot {
   display: inline-block;
-}
-
-.factor-slot.hidden {
-  visibility: hidden;
-}
-
-.factor-slot.visible {
-  visibility: visible;
+  white-space: nowrap;
 }
 .chart-container {
   flex: 1;
@@ -519,6 +516,78 @@
 .strategy-switch-wrapper {
   display: flex;
   justify-content: center;
-  width: 160px;
+  width: 240px;
   flex-shrink: 0;
+}
+
+/* ── Turtle Params ───────────────────────────────────── */
+
+.turtle-params {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.turtle-params.hidden {
+  visibility: hidden;
+}
+
+.turtle-params.visible {
+  visibility: visible;
+}
+
+.turtle-params-row {
+  display: flex;
+  gap: 6px;
+}
+
+.turtle-label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.turtle-label-head {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.turtle-label-head em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.turtle-label input[type="range"] {
+  width: 100%;
+  height: 12px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ── Turtle Stats Summary (inline below sliders) ───── */
+
+.turtle-stats-summary {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.turtle-stats-summary em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.turtle-stats-empty {
+  font-size: 10px;
+  color: var(--text-muted);
 }

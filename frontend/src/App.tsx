@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { fetchIndicators, type FactorToggle } from "./api";
-import type { Candle, StockItem, StockInfo, IndicatorsResponse, Signal } from "./types";
+import { fetchIndicators, type FactorToggle, type TurtleParams, DEFAULT_TURTLE_PARAMS } from "./api";
+import type { ActionPoint, Candle, StockItem, StockInfo, IndicatorsResponse, Signal } from "./types";
 import StockSearch from "./components/StockSearch";
 import StockList from "./components/StockList";
 import StockChart from "./components/StockChart";
@@ -9,17 +9,35 @@ import "./App.css";
 const STORAGE_KEY = "stock-dashboard:watchlist";
 const MODE_KEY = "stock-dashboard:strategy";
 const TOGGLE_KEY = "stock-dashboard:toggles";
+const TURTLE_PARAMS_KEY = "stock-dashboard:turtle-params";
 const INITIAL_DAYS = 400;
 const LOAD_MORE_DAYS = [800, 1600, 3200, 10000];
 
-type StrategyMode = "cta" | "alpha";
+type StrategyMode = "cta" | "alpha" | "turtle";
 
 function loadMode(): StrategyMode {
   try {
     const v = localStorage.getItem(MODE_KEY);
+    if (v === "turtle") return "turtle";
     return v === "cta" ? "cta" : "alpha";
   } catch {
     return "alpha";
+  }
+}
+
+function loadTurtleParams(): TurtleParams {
+  try {
+    const raw = localStorage.getItem(TURTLE_PARAMS_KEY);
+    if (!raw) return { ...DEFAULT_TURTLE_PARAMS };
+    const parsed = JSON.parse(raw);
+    return {
+      turtle_entry: parsed.turtle_entry ?? DEFAULT_TURTLE_PARAMS.turtle_entry,
+      turtle_add: parsed.turtle_add ?? DEFAULT_TURTLE_PARAMS.turtle_add,
+      turtle_stop: parsed.turtle_stop ?? DEFAULT_TURTLE_PARAMS.turtle_stop,
+      turtle_units: parsed.turtle_units ?? DEFAULT_TURTLE_PARAMS.turtle_units,
+    };
+  } catch {
+    return { ...DEFAULT_TURTLE_PARAMS };
   }
 }
 
@@ -81,6 +99,11 @@ function mergeIndicators(older: IndicatorsResponse, newer: IndicatorsResponse): 
     ...newerList,
   ];
 
+  const dedupActions = (old: ActionPoint[], newerList: ActionPoint[]) => [
+    ...old.filter((a) => !newerTimes.has(a.time)),
+    ...newerList,
+  ];
+
   return {
     candles,
     bollinger: pickOlder(older.bollinger),
@@ -94,6 +117,7 @@ function mergeIndicators(older: IndicatorsResponse, newer: IndicatorsResponse): 
     factor_evals: older.factor_evals?.length ? older.factor_evals : newer.factor_evals,
     factor_scores: older.factor_scores?.length ? pickOlder(older.factor_scores) : (newer.factor_scores || []),
     signals_v2: dedupSignals(older.signals_v2 || [], newer.signals_v2 || []),
+    turtle_actions: dedupActions(older.turtle_actions || [], newer.turtle_actions || []),
   };
 }
 
@@ -108,6 +132,7 @@ export default function App() {
   const [strategyMode, setStrategyMode] = useState<StrategyMode>(loadMode);
   const [switchingMode, setSwitchingMode] = useState(false);
   const [signalToggles, setSignalToggles] = useState<FactorToggle>(loadToggles);
+  const [turtleParams, setTurtleParams] = useState<TurtleParams>(loadTurtleParams);
 
   const loadStepRef = useRef(0);
   const loadingMoreRef = useRef(false);
@@ -115,8 +140,12 @@ export default function App() {
   useEffect(() => { saveStocks(stocks); }, [stocks]);
   useEffect(() => { localStorage.setItem(MODE_KEY, strategyMode); }, [strategyMode]);
   useEffect(() => { localStorage.setItem(TOGGLE_KEY, JSON.stringify(signalToggles)); }, [signalToggles]);
+  useEffect(() => { localStorage.setItem(TURTLE_PARAMS_KEY, JSON.stringify(turtleParams)); }, [turtleParams]);
 
-  const selectedStrategy = strategyMode === "alpha" ? "factor" : "default";
+  const selectedStrategy =
+    strategyMode === "alpha" ? "factor"
+    : strategyMode === "turtle" ? "turtle"
+    : "default";
 
   // Initial load — full loading state when no data exists
   useEffect(() => {
@@ -138,7 +167,7 @@ export default function App() {
     setChartError(null);
     loadStepRef.current = 0;
 
-    fetchIndicators(activeSymbol, INITIAL_DAYS, selectedStrategy, 5, signalToggles)
+    fetchIndicators(activeSymbol, INITIAL_DAYS, selectedStrategy, 5, signalToggles, turtleParams)
       .then((data) => {
         if (!cancelled) {
           setCandles(data.candles);
@@ -165,7 +194,7 @@ export default function App() {
     if (!activeSymbol || !candles.length) return;
     let cancelled = false;
     setSwitchingMode(true);
-    fetchIndicators(activeSymbol, candles.length, selectedStrategy, 5, signalToggles)
+    fetchIndicators(activeSymbol, candles.length, selectedStrategy, 5, signalToggles, turtleParams)
       .then((data) => {
         if (!cancelled) {
           setIndicators(data);
@@ -176,6 +205,23 @@ export default function App() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signalToggles]);
+
+  // Refresh when turtle params change (preserve lazy-load depth)
+  useEffect(() => {
+    if (!activeSymbol || !candles.length || strategyMode !== "turtle") return;
+    let cancelled = false;
+    setSwitchingMode(true);
+    fetchIndicators(activeSymbol, candles.length, selectedStrategy, 5, signalToggles, turtleParams)
+      .then((data) => {
+        if (!cancelled) {
+          setIndicators(data);
+          setSwitchingMode(false);
+        }
+      })
+      .catch(() => { if (!cancelled) setSwitchingMode(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turtleParams]);
   
   // Lazy load more history
   const handleReachLeftEdge = useCallback(async () => {
@@ -188,7 +234,7 @@ export default function App() {
     setLoadingMore(true);
 
     try {
-      const data = await fetchIndicators(activeSymbol, days, selectedStrategy, 5, signalToggles);
+      const data = await fetchIndicators(activeSymbol, days, selectedStrategy, 5, signalToggles, turtleParams);
       setIndicators((prev) => {
         if (!prev) return data;
         return mergeIndicators(data, prev);
@@ -204,7 +250,7 @@ export default function App() {
       loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [activeSymbol, selectedStrategy, signalToggles]);
+  }, [activeSymbol, selectedStrategy, signalToggles, turtleParams]);
 
   const handleAddStock = useCallback(
     (stock: StockInfo) => {
@@ -244,7 +290,13 @@ export default function App() {
       : indicators.signals;
   }, [indicators, strategyMode]);
 
-  // PnL
+  // Turtle actions
+  const displayActions = useMemo(() => {
+    if (!indicators) return [];
+    return strategyMode === "turtle" ? indicators.turtle_actions || [] : [];
+  }, [indicators, strategyMode]);
+
+  // ── PnL (same for both cta and alpha signals) ──
   const currentPnl = useMemo(() => {
     if (!indicators) return null;
     return displaySignals
@@ -252,7 +304,25 @@ export default function App() {
       .reduce((sum, s) => sum + (s.pnl_pct as number), 0);
   }, [indicators, displaySignals]);
 
-  // Factor stats
+  // ── Turtle stats ──────────────────────────────────────
+  const turtleTrades = useMemo(() => {
+    return displayActions.filter((a) => a.action === "Exit").length;
+  }, [displayActions]);
+
+  const turtleWinRate = useMemo(() => {
+    const exits = displayActions.filter((a) => a.action === "Exit" && a.pnl_pct != null);
+    if (!exits.length) return null;
+    const winners = exits.filter((a) => a.pnl_pct! > 0).length;
+    return winners / exits.length;
+  }, [displayActions]);
+
+  const turtleTotalPnl = useMemo(() => {
+    return displayActions
+      .filter((a) => a.action === "Exit" && a.pnl_pct != null)
+      .reduce((sum, a) => sum + a.pnl_pct!, 0);
+  }, [displayActions]);
+
+  // ── Factor stats ──────────────────────────────────────
   const validFactorCount = useMemo(() => {
     if (!indicators?.factor_evals) return 0;
     return indicators.factor_evals.filter((e) => e.is_valid).length;
@@ -265,7 +335,9 @@ export default function App() {
     return scores[scores.length - 1]!.total;
   }, [indicators]);
 
-  const pnlLabel = strategyMode === "alpha" ? "因子收益" : "规则收益";
+  const pnlLabel = strategyMode === "alpha" ? "因子收益"
+    : strategyMode === "turtle" ? "规则收益"
+    : "规则收益";
 
   return (
     <div className="app">
@@ -337,10 +409,16 @@ export default function App() {
                       >
                         因子Alpha
                       </span>
+                      <span
+                        className={`switch-option ${strategyMode === "turtle" ? "active" : ""}`}
+                        onClick={() => setStrategyMode("turtle")}
+                      >
+                        海龟仓位
+                      </span>
                     </div>
                   </div>
 
-                  {/* Signal type toggles — always reserve space */}
+                  {/* Signal type toggles (alpha mode only) */}
                   <div className={`signal-toggles ${strategyMode === "alpha" ? "visible" : "hidden"}`}>
                     <label className="toggle-label">
                       <input type="checkbox" checked={signalToggles.quantile}
@@ -359,6 +437,54 @@ export default function App() {
                     </label>
                   </div>
 
+                  {/* Turtle params + stats block (turtle mode only) */}
+                  <div className={`turtle-params ${strategyMode === "turtle" ? "visible" : "hidden"}`}>
+                    <div className="turtle-params-row">
+                      <label className="turtle-label">
+                        <span className="turtle-label-head">建仓 <em>{turtleParams.turtle_entry.toFixed(1)}σ</em></span>
+                        <input type="range" min={0.5} max={3.0} step={0.1}
+                          value={turtleParams.turtle_entry}
+                          onChange={(e) => setTurtleParams({ ...turtleParams, turtle_entry: +e.target.value })} />
+                      </label>
+                      <label className="turtle-label">
+                        <span className="turtle-label-head">加仓 <em>{turtleParams.turtle_add.toFixed(1)}σ</em></span>
+                        <input type="range" min={0.2} max={1.5} step={0.1}
+                          value={turtleParams.turtle_add}
+                          onChange={(e) => setTurtleParams({ ...turtleParams, turtle_add: +e.target.value })} />
+                      </label>
+                    </div>
+                    <div className="turtle-params-row">
+                      <label className="turtle-label">
+                        <span className="turtle-label-head">止损 <em>{turtleParams.turtle_stop.toFixed(1)}σ</em></span>
+                        <input type="range" min={1.0} max={4.0} step={0.1}
+                          value={turtleParams.turtle_stop}
+                          onChange={(e) => setTurtleParams({ ...turtleParams, turtle_stop: +e.target.value })} />
+                      </label>
+                      <label className="turtle-label">
+                        <span className="turtle-label-head">层数 <em>{turtleParams.turtle_units}</em></span>
+                        <input type="range" min={2} max={6} step={1}
+                          value={turtleParams.turtle_units}
+                          onChange={(e) => setTurtleParams({ ...turtleParams, turtle_units: +e.target.value })} />
+                      </label>
+                    </div>
+                    {/* Inline stats summary — sits below the sliders, no overflow to header-right */}
+                    <div className="turtle-stats-summary">
+                      {turtleTrades > 0 ? (
+                        <>
+                          交易 <em>{turtleTrades}</em> 笔
+                          {turtleWinRate !== null && (
+                            <span> | 胜率 <em>{(turtleWinRate * 100).toFixed(0)}%</em></span>
+                          )}
+                          <span> | PnL <em style={{ color: turtleTotalPnl >= 0 ? "#ef4444" : "#22c55e" }}>
+                            {turtleTotalPnl >= 0 ? "+" : ""}{turtleTotalPnl.toFixed(2)}%
+                          </em></span>
+                        </>
+                      ) : (
+                        <span className="turtle-stats-empty">暂无交易记录</span>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Loading indicator — fixed-width slot */}
                   <span className="loading-slot">
                     {switchingMode ? "加载新策略…" : ""}
@@ -366,18 +492,20 @@ export default function App() {
                 </div>
 
                 <div className="header-right">
-                  {/* Factor info — always reserve space */}
-                  <div className={`factor-slot ${strategyMode === "alpha" && indicators.factor_evals && indicators.factor_evals.length > 0 ? "visible" : "hidden"}`}>
-                    <div className="factor-badge">
-                      因子 {validFactorCount}/{indicators.factor_evals?.length ?? 0} 有效
-                      {alphaScore !== null && (
-                        <span className="alpha-score" style={{
-                          color: alphaScore >= 0 ? "#ef4444" : "#22c55e",
-                        }}>
-                          {" "}Alpha {alphaScore.toFixed(2)}
-                        </span>
-                      )}
-                    </div>
+                  {/* Factor info — alpha mode only (turtle stats live in turtle-params block) */}
+                  <div className={`info-slot ${strategyMode === "alpha" ? "visible" : "hidden"}`}>
+                    {indicators.factor_evals && indicators.factor_evals.length > 0 && (
+                      <div className="factor-badge">
+                        因子 {validFactorCount}/{indicators.factor_evals?.length ?? 0} 有效
+                        {alphaScore !== null && (
+                          <span className="alpha-score" style={{
+                            color: alphaScore >= 0 ? "#ef4444" : "#22c55e",
+                          }}>
+                            {" "}Alpha {alphaScore.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* PnL badge */}
@@ -408,6 +536,7 @@ export default function App() {
                 regime={indicators.regime}
                 kdj={indicators.kdj}
                 signals={displaySignals}
+                turtleActions={displayActions}
                 label={activeStock.symbol}
                 onReachLeftEdge={handleReachLeftEdge}
               />

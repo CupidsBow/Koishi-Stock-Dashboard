@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
 use crate::models::{
-  AdxPoint, AlphaScore, BollingerPoint, Candle, FactorEval, KdjPoint, KeltnerPoint, MacdPoint,
-  Signal,
+  ActionPoint, AdxPoint, AlphaScore, BollingerPoint, Candle, FactorEval, KdjPoint, KeltnerPoint,
+  MacdPoint, Signal,
 };
 use crate::services::cache::get_candles_with_cache;
 use crate::services::expression::builtin_factors;
@@ -14,7 +14,10 @@ use crate::services::indicators::{
   adx, bollinger_bands, compute_signals, kdj, keltner_channels, macd, market_regime, rsi,
 };
 use crate::services::prediction::compute_alpha_scores;
-use crate::services::signals::{generate_signals, pair_signals, SignalConfig};
+use crate::services::signals::{
+  generate_signals, generate_turtle_actions, pair_signals, finalize_actions, SignalConfig,
+  TurtleConfig,
+};
 
 // ── Query Parameters ────────────────────────────────────────────────────────
 
@@ -38,12 +41,29 @@ pub struct StockQuery {
   /// Enable price-score divergence signals
   #[serde(default = "default_true")]
   pub divergence: bool,
+  // ── Turtle params (only for strategy=turtle) ──
+  /// Entry z-score threshold (default 1.5)
+  #[serde(default = "default_turtle_entry")]
+  pub turtle_entry: f64,
+  /// Add step in sigma multiples (default 0.5)
+  #[serde(default = "default_turtle_add")]
+  pub turtle_add: f64,
+  /// Stop-loss in sigma multiples (default 2.0)
+  #[serde(default = "default_turtle_stop")]
+  pub turtle_stop: f64,
+  /// Max pyramid layers (default 4)
+  #[serde(default = "default_turtle_units")]
+  pub turtle_units: u32,
 }
 
 fn default_days() -> usize { 400 }
 fn default_strategy() -> String { "default".into() }
 fn default_forward() -> usize { 5 }
 fn default_true() -> bool { true }
+fn default_turtle_entry() -> f64 { 1.5 }
+fn default_turtle_add() -> f64 { 0.5 }
+fn default_turtle_stop() -> f64 { 2.0 }
+fn default_turtle_units() -> u32 { 4 }
 
 // ── Response ─────────────────────────────────────────────────────────────────
 
@@ -67,6 +87,10 @@ pub struct IndicatorsResponse {
   pub factor_scores: Vec<Option<AlphaScore>>,
   #[serde(skip_serializing_if = "Vec::is_empty")]
   pub signals_v2: Vec<Signal>,
+
+  // Turtle strategy fields (only present for strategy=turtle)
+  #[serde(skip_serializing_if = "Vec::is_empty")]
+  pub turtle_actions: Vec<ActionPoint>,
 }
 
 // ── Handler ──────────────────────────────────────────────────────────────────
@@ -97,22 +121,38 @@ async fn get_indicators(
   let rg = market_regime(&ax, &bb, &candles);
   let sig = compute_signals(&candles, &bb, &kn, &mc, &kd);
 
-  // ── Factor-model signals (only for factor/hybrid) ──
-  let (factor_evals, factor_scores, mut signals_v2) = match params.strategy.as_str() {
-    "factor" | "hybrid" => {
-      let ic_window = 60usize.min(params.days / 3);
-      let forward = params.forward;
+  // ── Strategy-specific signal/action computation ──
+  let (factor_evals, factor_scores, mut signals_v2, turtle_actions) =
+    match params.strategy.as_str() {
+      "factor" | "hybrid" => {
+        let ic_window = 60usize.min(params.days / 3);
+        let forward = params.forward;
 
-      match compute_and_signal(&candles, ic_window, forward, params.quantile, params.reversal, params.divergence) {
-        Ok((evals, scores, sigs)) => (evals, scores, sigs),
-        Err(e) => {
-          eprintln!("Factor pipeline error for {}: {e}", params.symbol);
-          (Vec::new(), Vec::new(), Vec::new())
+        match compute_and_signal(
+          &candles, ic_window, forward,
+          params.quantile, params.reversal, params.divergence,
+        ) {
+          Ok((evals, scores, sigs)) => (evals, scores, sigs, Vec::new()),
+          Err(e) => {
+            eprintln!("Factor pipeline error for {}: {e}", params.symbol);
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new())
+          }
         }
       }
-    }
-    _ => (Vec::new(), Vec::new(), Vec::new()),
-  };
+      "turtle" => {
+        let ic_window = 60usize.min(params.days / 3);
+        let forward = params.forward;
+
+        match compute_and_turtle(&candles, ic_window, forward, &params) {
+          Ok((evals, scores, actions)) => (evals, scores, Vec::new(), actions),
+          Err(e) => {
+            eprintln!("Turtle pipeline error for {}: {e}", params.symbol);
+            (Vec::new(), Vec::new(), Vec::new(), Vec::new())
+          }
+        }
+      }
+      _ => (Vec::new(), Vec::new(), Vec::new(), Vec::new()),
+    };
 
   // Pair factor buy/sell signals and compute pnl_pct (matching legacy format)
   if !signals_v2.is_empty() {
@@ -132,6 +172,7 @@ async fn get_indicators(
     factor_evals,
     factor_scores,
     signals_v2,
+    turtle_actions,
   })
   .into_response()
 }
@@ -160,6 +201,31 @@ fn compute_and_signal(
   let sigs = generate_signals(&scores, candles, &config);
 
   Ok((evals, scores, sigs))
+}
+
+// ── Turtle pipeline helper ────────────────────────────────────────────────────
+
+fn compute_and_turtle(
+  candles: &[Candle],
+  ic_window: usize,
+  forward_period: usize,
+  params: &StockQuery,
+) -> anyhow::Result<(Vec<FactorEval>, Vec<Option<AlphaScore>>, Vec<ActionPoint>)> {
+  let factor_defs = builtin_factors();
+  let (evals, scores) =
+    compute_alpha_scores(candles, &factor_defs, ic_window, forward_period)?;
+
+  let config = TurtleConfig {
+    entry_z_threshold: params.turtle_entry,
+    add_step_sigma: params.turtle_add,
+    stop_loss_sigma: params.turtle_stop,
+    max_units: params.turtle_units,
+    ..Default::default()
+  };
+  let actions = generate_turtle_actions(&scores, candles, &config);
+  let actions = finalize_actions(&actions);
+
+  Ok((evals, scores, actions))
 }
 
 /// Returns the router for this controller.

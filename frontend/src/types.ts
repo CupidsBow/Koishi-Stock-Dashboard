@@ -84,6 +84,27 @@ export interface AlphaScore {
 
 // ── API response ─────────────────────────────────────────────────────────
 
+// ── Turtle strategy types ──────────────────────────────────────────────────
+
+export type ActionKind = "Entry" | "Add" | "Exit";
+
+/** A trading action point produced by the Turtle strategy. */
+export interface ActionPoint {
+  time: number;
+  action: ActionKind;
+  price: number;
+  alpha_score: number;
+  alpha_z: number;
+  alpha_std: number;
+  position_pct: number;
+  current_units: number;
+  max_units: number;
+  reason: string;
+  pnl_pct?: number | null;
+}
+
+// ── API response ─────────────────────────────────────────────────────────
+
 export interface IndicatorsResponse {
   candles: Candle[];
   bollinger: (BollingerPoint | null)[];
@@ -98,4 +119,6 @@ export interface IndicatorsResponse {
   factor_evals: FactorEval[];
   factor_scores: (AlphaScore | null)[];
   signals_v2: Signal[];
+  // Turtle strategy fields
+  turtle_actions: ActionPoint[];
 }

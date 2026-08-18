@@ -161,3 +161,39 @@ pub struct Signal {
   /// J-line signals).
   pub pnl_pct: Option<f64>,
 }
+
+// ── Turtle Action Types ────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
+pub enum ActionKind {
+  Entry,
+  Add,
+  Exit,
+}
+
+/// A trading action point produced by the Turtle strategy.
+///
+/// Unlike raw buy/sell Signals, an ActionPoint represents one concrete
+/// portfolio decision — opening a position, adding to it, or closing it.
+#[derive(Debug, Clone, Serialize)]
+pub struct ActionPoint {
+  pub time: i64,
+  pub action: ActionKind,
+  pub price: f64,
+  /// The Alpha Score (total) at the time of this action.
+  pub alpha_score: f64,
+  /// Rolling z-score of the alpha score at this bar.
+  pub alpha_z: f64,
+  /// Rolling standard deviation of the alpha score.
+  pub alpha_std: f64,
+  /// Target position after this action (percentage, 0–100).
+  pub position_pct: f64,
+  /// Number of pyramid layers currently held.
+  pub current_units: u32,
+  /// Maximum pyramid layers allowed.
+  pub max_units: u32,
+  /// Human-readable reason string describing the trigger.
+  pub reason: String,
+  /// Realised PnL percentage (only populated for Exit actions).
+  pub pnl_pct: Option<f64>,
+}

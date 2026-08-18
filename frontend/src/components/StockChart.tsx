@@ -18,7 +18,7 @@ import type {
   SeriesAttachedParameter,
 } from "lightweight-charts";
 import type { CanvasRenderingTarget2D, MediaCoordinatesRenderingScope } from "fancy-canvas";
-import type { Candle, BollingerPoint, KeltnerPoint, MacdPoint, KdjPoint, Signal } from "../types";
+import type { ActionPoint, Candle, BollingerPoint, KeltnerPoint, MacdPoint, KdjPoint, Signal } from "../types";
 
 interface Props {
   candles: Candle[];
@@ -27,6 +27,7 @@ interface Props {
   macd: (MacdPoint | null)[];
   kdj: (KdjPoint | null)[];
   signals: Signal[];
+  turtleActions?: ActionPoint[];
   regime?: string;
   label?: string;
   onReachLeftEdge?: () => void;
@@ -177,6 +178,158 @@ class BBSignalPrimitive implements ISeriesPrimitive<Time> {
   }
 }
 
+// ── Turtle action label renderer ─────────────────────────────────────────
+
+class TurtleActionRenderer implements IPrimitivePaneRenderer {
+  constructor(
+    private readonly _x: number,
+    private readonly _y: number,
+    private readonly _text: string,
+    private readonly _color: string,
+    private readonly _isExit: boolean,
+  ) {}
+
+  draw(target: CanvasRenderingTarget2D, _utils?: DrawingUtils): void {
+    target.useMediaCoordinateSpace((scope: MediaCoordinatesRenderingScope) => {
+      const ctx = scope.context;
+      ctx.save();
+
+      const r = 8;
+      const x = this._x;
+      const y = this._y;
+      const color = this._color;
+
+      if (this._isExit) {
+        // Exit → rectangle "平"
+        ctx.fillStyle = color;
+        ctx.fillRect(x - r, y - r, r * 2, r * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 9px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("平", x, y);
+      } else {
+        // Entry/Add → diamond/circle
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 9px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this._text, x, y);
+      }
+
+      ctx.restore();
+    });
+  }
+}
+
+class TurtleActionPaneView implements IPrimitivePaneView {
+  constructor(private readonly _renderer: TurtleActionRenderer) {}
+
+  renderer(): IPrimitivePaneRenderer | null {
+    return this._renderer;
+  }
+}
+
+class TurtleActionPrimitive implements ISeriesPrimitive<Time> {
+  private _chart: IChartApi | null = null;
+  private _series: ISeriesApi<"Candlestick", Time> | null = null;
+  private _paneViews: readonly TurtleActionPaneView[] = [];
+  private _data: { candles: Candle[]; actions: ActionPoint[] } = { candles: [], actions: [] };
+  private _requestUpdate: (() => void) | null = null;
+
+  updateData(candles: Candle[], actions: ActionPoint[]): void {
+    this._data = { candles, actions };
+    this._paneViews = this._buildViews();
+    this._requestUpdate?.();
+  }
+
+  attached(param: SeriesAttachedParameter<Time>): void {
+    this._chart = param.chart as IChartApi;
+    this._series = param.series as ISeriesApi<"Candlestick", Time>;
+    this._requestUpdate = param.requestUpdate;
+  }
+
+  detached(): void {
+    this._chart = null;
+    this._series = null;
+    this._requestUpdate = null;
+  }
+
+  updateAllViews(): void {
+    this._paneViews = this._buildViews();
+  }
+
+  paneViews(): readonly IPrimitivePaneView[] {
+    return this._paneViews;
+  }
+
+  private _buildViews(): readonly TurtleActionPaneView[] {
+    const { candles, actions } = this._data;
+    const chart = this._chart;
+    const series = this._series;
+    if (!chart || !series || !candles.length || !actions.length) return [];
+
+    const candleByTime = new Map<number, Candle>();
+    for (const c of candles) {
+      candleByTime.set(c.time, c);
+    }
+
+    const timeScale = chart.timeScale();
+    const views: TurtleActionPaneView[] = [];
+
+    for (const a of actions) {
+      const candle = candleByTime.get(a.time);
+      if (!candle) continue;
+
+      const x = timeScale.timeToCoordinate(a.time as Time);
+      if (x === null) continue;
+
+      const priceY = series.priceToCoordinate(
+        a.action === "Exit" ? candle.high : candle.low,
+      );
+      if (priceY === null) continue;
+
+      let text: string;
+      let color: string;
+      let offsetY: number;
+
+      switch (a.action) {
+        case "Entry":
+          text = "建";
+          color = "#dc2626";
+          offsetY = a.action === "Entry" ? -40 : -25;
+          break;
+        case "Add":
+          text = "+";
+          color = "#ef4444";
+          offsetY = -25;
+          break;
+        case "Exit":
+          text = "平";
+          color = "#16a34a";
+          offsetY = a.action === "Exit" ? 40 : 28;
+          break;
+      }
+
+      views.push(new TurtleActionPaneView(
+        new TurtleActionRenderer(x, priceY + offsetY, text, color, a.action === "Exit"),
+      ));
+    }
+
+    return views;
+  }
+
+  /** Find turtle actions at a given chart time. */
+  getActionsAt(time: number): ActionPoint[] {
+    return this._data.actions.filter((a) => a.time === time);
+  }
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 
 export default function StockChart({
@@ -186,6 +339,7 @@ export default function StockChart({
   macd,
   kdj,
   signals,
+  turtleActions,
   regime: _regime,
   label,
   onReachLeftEdge,
@@ -196,6 +350,7 @@ export default function StockChart({
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const bbSignalPrimitiveRef = useRef<BBSignalPrimitive | null>(null);
+  const turtlePrimitiveRef = useRef<TurtleActionPrimitive | null>(null);
   const bbUpperRef = useRef<ISeriesApi<"Line"> | null>(null);
   const bbLowerRef = useRef<ISeriesApi<"Line"> | null>(null);
   const knUpperRef = useRef<ISeriesApi<"Line"> | null>(null);
@@ -210,6 +365,8 @@ export default function StockChart({
 
   const signalsRef = useRef<Signal[]>(signals);
   signalsRef.current = signals;
+  const turtleActionsRef = useRef<ActionPoint[]>(turtleActions || []);
+  turtleActionsRef.current = turtleActions || [];
   const candlesRef = useRef<Candle[]>(candles);
   candlesRef.current = candles;
   const bbRef = useRef(bollinger);
@@ -222,6 +379,7 @@ export default function StockChart({
   kdjRef.current = kdj;
   const onReachLeftEdgeRef = useRef(onReachLeftEdge);
   const [hoveredSignals, setHoveredSignals] = useState<Signal[]>([]);
+  const [hoveredActions, setHoveredActions] = useState<ActionPoint[]>([]);
   onReachLeftEdgeRef.current = onReachLeftEdge;
   const firedAtCount = useRef(0);
 
@@ -269,6 +427,11 @@ export default function StockChart({
     const bbSignalPrimitive = new BBSignalPrimitive();
     candleSeries.attachPrimitive(bbSignalPrimitive);
     bbSignalPrimitiveRef.current = bbSignalPrimitive;
+
+    // Attach turtle action primitive
+    const turtlePrimitive = new TurtleActionPrimitive();
+    candleSeries.attachPrimitive(turtlePrimitive);
+    turtlePrimitiveRef.current = turtlePrimitive;
 
     const bbUpper = chart.addSeries(LineSeries, {
       color: "rgba(20,184,166,0.35)",
@@ -342,6 +505,7 @@ export default function StockChart({
       chartRef.current = null;
       candleSeriesRef.current = null;
       bbSignalPrimitiveRef.current = null;
+      turtlePrimitiveRef.current = null;
       bbUpperRef.current = null;
       bbLowerRef.current = null;
       knUpperRef.current = null;
@@ -419,6 +583,7 @@ export default function StockChart({
 
     // Update custom primitive with latest signal data
     bbSignalPrimitiveRef.current?.updateData(candlesRef.current, signalsRef.current);
+    turtlePrimitiveRef.current?.updateData(candlesRef.current, turtleActionsRef.current);
     // Trigger chart redraw so primitive picks up new data
     chart.timeScale().applyOptions({ fixRightEdge: true });
 
@@ -433,7 +598,7 @@ export default function StockChart({
     } else {
       ts.fitContent();
     }
-  }, [candles, bollinger, keltner, macd, kdj, signals]);
+  }, [candles, bollinger, keltner, macd, kdj, signals, turtleActions]);
 
   return (
     <div
@@ -455,11 +620,14 @@ export default function StockChart({
           ).time;
           const sig = bbSignalPrimitiveRef.current?.getSignalsAt(rt);
           setHoveredSignals(sig ?? []);
+          const acts = turtlePrimitiveRef.current?.getActionsAt(rt);
+          setHoveredActions(acts ?? []);
         } else {
           setHoveredSignals([]);
+          setHoveredActions([]);
         }
       }}
-      onMouseLeave={() => setHoveredSignals([])}
+      onMouseLeave={() => { setHoveredSignals([]); setHoveredActions([]); }}
     >
       <div
         style={{
@@ -551,7 +719,7 @@ export default function StockChart({
         >
           {hoveredSignals.map((s: Signal, i: number) => (
             <div
-              key={i}
+              key={`sig-${i}`}
               style={{
                 background: s.kind === "Buy" ? "#dc2626" : "#16a34a",
                 color: "#fff",
@@ -564,6 +732,23 @@ export default function StockChart({
               }}
             >
               {s.kind === "Buy" ? "B" : "S"} {s.reason}
+            </div>
+          ))}
+          {hoveredActions.map((a: ActionPoint, i: number) => (
+            <div
+              key={`act-${i}`}
+              style={{
+                background: a.action === "Exit" ? "#16a34a" : "#dc2626",
+                color: "#fff",
+                padding: "5px 14px",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                textAlign: "center",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {a.action === "Entry" ? "建" : a.action === "Add" ? "+" : "平"} {a.reason}
             </div>
           ))}
         </div>
